@@ -14,9 +14,23 @@ function ErrorMessage({msg}) {
   }
 }
 
-function ActiveGame({reset, secret, guesses, setGuesses}) {
+function ActiveGame({reset, gameState, setGameState}) {
   const [currentGuess, setCurrentGuess] = useState("");
-  const [error, setError] = useState("");
+
+  function setError(err) {
+    setGameState(Object.assign({}, gameState, {
+      error: err,
+    }));
+  }
+
+  function setGuesses(lst) {
+    // For some reason, Object.assign doesn't seem to work here...
+    setGameState({
+      error: "",
+      secret: gameState.secret,
+      guesses: lst,
+    });
+  }
 
   function guess() {
     // Check that the input was a 4-digit number with unique digits
@@ -29,9 +43,8 @@ function ActiveGame({reset, secret, guesses, setGuesses}) {
       // using the example from https://stackoverflow.com/a/52173482.
       // Sets behave weirdly when used as React states, as described
       // in https://dev.to/ganes1410/using-javascript-sets-with-react-usestate-39eo.
-      const newGuesses = _.concat(guesses, currentGuess);
+      const newGuesses = _.concat(gameState.guesses, currentGuess);
       setGuesses(_.uniq(newGuesses));
-      setError("");
       setCurrentGuess("");
     }
   }
@@ -54,7 +67,7 @@ function ActiveGame({reset, secret, guesses, setGuesses}) {
       <tr key={index}>
         <td>{index + 1}</td>
         <td>{guess}</td>
-        <td>{guessResult(secret, guess)}</td>
+        <td>{guessResult(gameState.secret, guess)}</td>
       </tr>
     );
   }
@@ -63,7 +76,7 @@ function ActiveGame({reset, secret, guesses, setGuesses}) {
     <div>
       <h1>Bulls</h1>
       <p>Guess a 4 digit number:</p>
-      <ErrorMessage msg={error} />
+      <ErrorMessage msg={gameState.error} />
       <div>
         <input type="text"
                value={currentGuess}
@@ -86,7 +99,7 @@ function ActiveGame({reset, secret, guesses, setGuesses}) {
           </tr>
         </thead>
         <tbody>
-          {guesses.map((guess, index) => displayGuess(guess, index))}
+          {gameState.guesses.map((guess, index) => displayGuess(guess, index))}
         </tbody>
       </table>
     </div>
@@ -118,29 +131,33 @@ function GameWon({reset, secret}) {
 }
 
 function Bulls() {
-  const [secret, setSecret] = useState(randomSecret());
-  const [guesses, setGuesses] = useState([]);
+  const [gameState, setGameState] = useState({
+    secret: randomSecret(),
+    guesses: [],
+    error: "",
+  });
 
   function reset() {
-    setSecret(randomSecret());
-    setGuesses([]);
+    setGameState({
+      secret: randomSecret(),
+      guesses: [],
+    });
   }
 
-  if (isGameOver(guesses)) {
+  if (isGameOver(gameState.guesses)) {
     return (
-      <GameOver reset={reset} secret={secret} />
+      <GameOver reset={reset} secret={gameState.secret} />
     );
-  } else if (isGameWon(guesses, secret)) {
+  } else if (isGameWon(gameState.guesses, gameState.secret)) {
     return (
-      <GameWon reset={reset} secret={secret} />
+      <GameWon reset={reset} secret={gameState.secret} />
     );
   }
   else {
     return (
       <ActiveGame reset={reset}
-                  secret={secret}
-                  guesses={guesses}
-                  setGuesses={setGuesses} />
+                  gameState={gameState}
+                  setGameState={setGameState} />
     );
   }
 }
