@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { ch_join, ch_push } from './socket';
 import _ from 'lodash';
-import { randomSecret, guessResult, isGameOver, isGameWon } from './game';
 
 function ErrorMessage({msg}) {
   if (msg) {
@@ -23,30 +23,8 @@ function ActiveGame({reset, gameState, setGameState}) {
     }));
   }
 
-  function setGuesses(lst) {
-    // For some reason, Object.assign doesn't seem to work here...
-    setGameState({
-      error: "",
-      secret: gameState.secret,
-      guesses: lst,
-    });
-  }
-
   function guess() {
-    // Check that the input was a 4-digit number with unique digits
-    if (!currentGuess.match(/^[1-9][0-9]{3}$/)) {
-      setError("Guess must be a four-digit number between 1000 and 9999");
-    } else if (_.uniq(currentGuess).length !== currentGuess.length) {
-      setError("Guess must not contain duplicated digits");
-    } else {
-      // Emulate the behavior of a set (unique elements only)
-      // using the example from https://stackoverflow.com/a/52173482.
-      // Sets behave weirdly when used as React states, as described
-      // in https://dev.to/ganes1410/using-javascript-sets-with-react-usestate-39eo.
-      const newGuesses = _.concat(gameState.guesses, currentGuess);
-      setGuesses(_.uniq(newGuesses));
-      setCurrentGuess("");
-    }
+      ch_push("guess", {number: currentGuess});
   }
 
   // Update functions based on code from lecture from 2021-01-29: 
@@ -66,8 +44,8 @@ function ActiveGame({reset, gameState, setGameState}) {
     return (
       <tr key={index}>
         <td>{index + 1}</td>
-        <td>{guess}</td>
-        <td>{guessResult(gameState.secret, guess)}</td>
+        <td>{guess.guess}</td>
+        <td>{`${guess.a}A${guess.b}B`}</td>
       </tr>
     );
   }
@@ -86,7 +64,8 @@ function ActiveGame({reset, gameState, setGameState}) {
           Guess
         </button>
       </div>
-      <button className="button button-outline" onClick={reset}>
+      <button className="button button-outline"
+              onClick={() => { reset(); setCurrentGuess(""); } }>
         Reset Game
       </button>
       <h2>Guesses:</h2>
@@ -106,11 +85,11 @@ function ActiveGame({reset, gameState, setGameState}) {
   );
 }
 
-function GameOver({reset, secret}) {
+function GameOver({reset}) {
   return (
     <div>
       <h1>Game Over!</h1>
-      <p>You failed to guess the secret number, which was {secret}.</p>
+      <p>You failed to guess the secret number.</p>
       <button onClick={reset}>
         Reset Game
       </button>
@@ -118,11 +97,11 @@ function GameOver({reset, secret}) {
   );
 }
 
-function GameWon({reset, secret}) {
+function GameWon({reset}) {
   return (
     <div>
       <h1>You won!</h1>
-      <p>You correctly guessed the secret number, which was {secret}.</p>
+      <p>You correctly guessed the secret number!</p>
       <button onClick={reset}>
         Play Again
       </button>
@@ -132,25 +111,25 @@ function GameWon({reset, secret}) {
 
 function Bulls() {
   const [gameState, setGameState] = useState({
-    secret: randomSecret(),
     guesses: [],
+    won: false,
+    lost: false,
     error: "",
   });
 
+  useEffect(() => ch_join(setGameState));
+
   function reset() {
-    setGameState({
-      secret: randomSecret(),
-      guesses: [],
-    });
+    ch_push("reset", "");
   }
 
-  if (isGameOver(gameState.guesses)) {
+  if (gameState.lost) {
     return (
-      <GameOver reset={reset} secret={gameState.secret} />
+      <GameOver reset={reset} />
     );
-  } else if (isGameWon(gameState.guesses, gameState.secret)) {
+  } else if (gameState.won) {
     return (
-      <GameWon reset={reset} secret={gameState.secret} />
+      <GameWon reset={reset} />
     );
   }
   else {

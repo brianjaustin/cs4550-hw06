@@ -92,7 +92,8 @@ defmodule Bulls.Game do
     %{
       guesses: Enum.map(st.guesses, &(view_guess(&1, st.secret))),
       won: game_won,
-      lost: lost?(st) and not game_won
+      lost: lost?(st) and not game_won,
+      error: Map.get(st, :error, "")
     }
   end
 
