@@ -62,19 +62,25 @@ function ActiveGame({reset, gameState, setGameState}) {
       <h1>Bulls</h1>
       <p>Guess a 4 digit number:</p>
       <ErrorMessage msg={gameState.error} />
-      <div>
-        <input type="text"
-               value={currentGuess}
-               onChange={updateGuess}
-               onKeyPress={keyPress} />
-        <button onClick={guess}>
-          Guess
-        </button>
+      <div className="row">
+        <div className="column column-60">
+          <input type="text"
+                value={currentGuess}
+                onChange={updateGuess}
+                onKeyPress={keyPress} />
+        </div>
+        <div className="column">
+          <button onClick={guess}>
+            Guess
+          </button>
+        </div>
+        <div className="column">
+          <button className="button button-outline"
+                onClick={() => { reset(); setCurrentGuess(""); } }>
+            Reset Game
+          </button>
+        </div>
       </div>
-      <button className="button button-outline"
-              onClick={() => { reset(); setCurrentGuess(""); } }>
-        Reset Game
-      </button>
       <h2>Guesses:</h2>
       <table>
         <thead>
