@@ -1,3 +1,12 @@
+/**
+ * This code is based on my work for the React
+ * browser game assignment (HW 03). It (including
+ * the code in `socket.js`) also uses work from lectures,
+ * see the scratch repository
+ * (https://github.com/NatTuck/scratch-2021-01/tree/master/4550/0212/hangman)
+ * for details.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { ch_join, ch_push } from './socket';
 import _ from 'lodash';

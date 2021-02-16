@@ -1,5 +1,14 @@
 defmodule BullsWeb.GameChannel do
-  @moduledoc false
+  @moduledoc """
+  Channel for interacting with the browser logic of the
+  Bulls and Cows game.
+
+  ## Attributions
+
+    This code is based on the Hangman example shown in lecture,
+    minus backup agent changes.
+    https://github.com/NatTuck/scratch-2021-01/blob/master/4550/0212/hangman/lib/hangman_web/channels/game_channel.ex
+  """
 
   use BullsWeb, :channel
 
