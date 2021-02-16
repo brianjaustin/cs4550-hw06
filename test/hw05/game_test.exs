@@ -36,7 +36,7 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.guess("1234")
     |> Bulls.Game.guess("abc1234")
     assert MapSet.to_list(result.guesses) == ["1234"]
-    assert result.error == "Invalid guess 'abc1234'"
+    assert result.error == "Invalid guess 'abc1234'. Must be a four-digit number with unique digits"
   end
 
   test "guess returns an error if game already lost" do
@@ -69,6 +69,13 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.guess("5678")
     assert MapSet.to_list(result.guesses) == ["1234"]
     assert result.error == "Game already won. Please start a new game."
+  end
+
+  test "guess does not allow 1123" do
+    result = Bulls.Game.new
+    |> Bulls.Game.guess("1123")
+    assert MapSet.size(result.guesses) == 0
+    assert result.error == "Guess may not contain duplicate digits."
   end
 
   test "view converts guess with no hits" do

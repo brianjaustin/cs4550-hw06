@@ -65,7 +65,7 @@ defmodule Bulls.Game do
 
     iex> state = Bulls.Game.guess(%{secret: 1234, guesses: MapSet.new, error: ""}, "0123")
     iex> state.error
-    "Invalid guess '0123'"
+    "Invalid guess '0123'. Must be a four-digit number with unique digits"
   """
   @spec guess(game_state, String.t()) :: game_state
   def guess(st, num) do
@@ -79,8 +79,7 @@ defmodule Bulls.Game do
         %{st | error: "Guess may not contain duplicate digits."}
       Regex.match?(~r/^[1-9]\d{3}$/, num) ->
         %{st | guesses: MapSet.put(st.guesses, num), error: ""}
-      true -> %{st | error: "Invalid guess '#{num}'.
-        Must be a four-digit number with unique digits"}
+      true -> %{st | error: "Invalid guess '#{num}'. Must be a four-digit number with unique digits"}
     end
   end
 
