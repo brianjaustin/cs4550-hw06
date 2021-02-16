@@ -14,9 +14,7 @@ import _ from 'lodash';
 function ErrorMessage({msg}) {
   if (msg) {
     return (
-      <div className="error">
-        <p>{msg}</p>
-      </div>
+      <p class="alert alert-danger" role="alert">{msg}</p>
     );
   } else {
     return null;

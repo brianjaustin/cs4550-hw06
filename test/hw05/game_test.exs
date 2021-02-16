@@ -40,7 +40,7 @@ defmodule Bulls.GameTest do
   end
 
   test "guess returns an error if game already lost" do
-    result = %{secret: "1111", guesses: MapSet.new}
+    result = %{secret: "1111", guesses: MapSet.new, error: ""}
     |> Bulls.Game.guess("1234")
     |> Bulls.Game.guess("4321")
     |> Bulls.Game.guess("5678")
@@ -64,7 +64,7 @@ defmodule Bulls.GameTest do
   end
 
   test "guess returns an error if game already won" do
-    result = %{secret: "1234", guesses: MapSet.new}
+    result = %{secret: "1234", guesses: MapSet.new, error: ""}
     |> Bulls.Game.guess("1234")
     |> Bulls.Game.guess("5678")
     assert MapSet.to_list(result.guesses) == ["1234"]
@@ -72,7 +72,7 @@ defmodule Bulls.GameTest do
   end
 
   test "view converts guess with no hits" do
-    result = %{secret: "1234", guesses: MapSet.new}
+    result = %{secret: "1234", guesses: MapSet.new , error: ""}
     |> Bulls.Game.guess("5678")
     |> Bulls.Game.view()
     refute result.won
@@ -87,7 +87,7 @@ defmodule Bulls.GameTest do
   end
 
   test "view converts guesses with hits" do
-    result = %{secret: "1234", guesses: MapSet.new}
+    result = %{secret: "1234", guesses: MapSet.new, error: ""}
     |> Bulls.Game.guess("1432")
     |> Bulls.Game.guess("1256")
     |> Bulls.Game.guess("1235")
@@ -105,7 +105,7 @@ defmodule Bulls.GameTest do
   end
 
   test "view notifies win" do
-    result = %{secret: "1234", guesses: MapSet.new}
+    result = %{secret: "1234", guesses: MapSet.new, error: ""}
     |> Bulls.Game.guess("4321")
     |> Bulls.Game.guess("5678")
     |> Bulls.Game.guess("8765")
@@ -121,7 +121,7 @@ defmodule Bulls.GameTest do
   end
 
   test "view notifies loss" do
-    result = %{secret: "1111", guesses: MapSet.new}
+    result = %{secret: "1111", guesses: MapSet.new, error: ""}
     |> Bulls.Game.guess("4321")
     |> Bulls.Game.guess("5678")
     |> Bulls.Game.guess("8765")

@@ -21,7 +21,7 @@ defmodule Bulls.Game do
     a :: non_neg_integer,
     b :: non_neg_integer
   }
-  @type game_state :: {secret :: String.t(), guesses :: [String.t()]}
+  @type game_state :: {secret :: String.t(), guesses :: [String.t()], error :: String.t()}
 
   @doc """
   Produces a blank game state, with empty guesses and a randomly
@@ -31,7 +31,8 @@ defmodule Bulls.Game do
   def new do
     %{
       secret: gen_secret(),
-      guesses: MapSet.new
+      guesses: MapSet.new,
+      error: ""
     }
   end
 
@@ -56,26 +57,30 @@ defmodule Bulls.Game do
 
   ## Examples
 
-    iex> state = Bulls.Game.guess(%{secret: 1234, guesses: MapSet.new}, "4567")
+    iex> state = Bulls.Game.guess(%{secret: 1234, guesses: MapSet.new, error: ""}, "4567")
     iex> state.secret
     1234
     iex> state.guesses
     #MapSet<["4567"]>
 
-    iex> state = Bulls.Game.guess(%{secret: 1234, guesses: MapSet.new}, "0123")
+    iex> state = Bulls.Game.guess(%{secret: 1234, guesses: MapSet.new, error: ""}, "0123")
     iex> state.error
     "Invalid guess '0123'"
   """
   @spec guess(game_state, String.t()) :: game_state
   def guess(st, num) do
+    num_digits = String.graphemes(num)
     cond do
       won?(st) ->
-        Map.put(st, :error, "Game already won. Please start a new game.")
+        %{st | error: "Game already won. Please start a new game."}
       lost?(st) ->
-        Map.put(st, :error, "Game lost. Please start a new game.")
+        %{st | error: "Game lost. Please start a new game."}
+      Enum.dedup(num_digits) != num_digits ->
+        %{st | error: "Guess may not contain duplicate digits."}
       Regex.match?(~r/^[1-9]\d{3}$/, num) ->
-        %{st | guesses: MapSet.put(st.guesses, num)}
-      true -> Map.put(st, :error, "Invalid guess '#{num}'")
+        %{st | guesses: MapSet.put(st.guesses, num), error: ""}
+      true -> %{st | error: "Invalid guess '#{num}'.
+        Must be a four-digit number with unique digits"}
     end
   end
 
@@ -98,8 +103,8 @@ defmodule Bulls.Game do
   end
 
   defp view_guess(guess, secret) do
-    secret_list = secret |> String.split("", trim: true)
-    guess_list = guess |> String.split("", trim: true)
+    secret_list = String.graphemes(secret)
+    guess_list = String.graphemes(guess)
     
     Enum.zip(secret_list, guess_list)
     |> Enum.reduce(%{a: 0, b: 0}, fn {s, g}, %{a: correct, b: displaced} ->
