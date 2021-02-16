@@ -8,9 +8,9 @@ export PATH="$PATH:$NODEBIN"
 
 echo "Building..."
 
-mix deps.get --only prod
 mix local.hex --force
 mix local.rebar --force
+mix deps.get
 mix compile
 
 # Setup secret config file.

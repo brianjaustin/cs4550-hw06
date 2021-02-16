@@ -8,7 +8,7 @@ echo "Stopping old copy of app, if any..."
 
 _build/prod/rel/hw05/bin/hw05 stop || true
 
-CFGD=$(readlink -f ~/.config/hangman)
+CFGD=$(readlink -f ~/.config/bulls)
 
 if [ ! -e "$CFGD/base" ]; then
     echo "run build first"
