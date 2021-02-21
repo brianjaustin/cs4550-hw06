@@ -16,12 +16,12 @@ defmodule Bulls.Game do
     [Notes are here](https://github.com/NatTuck/scratch-2021-01/blob/master/notes-4550/07-phoenix/notes.md).
   """
 
-  @type guess_view :: {
-    guess :: String.t(),
-    a :: non_neg_integer,
-    b :: non_neg_integer
+  @type guess_view :: %{
+    guess: String.t(),
+    a: non_neg_integer,
+    b: non_neg_integer
   }
-  @type game_state :: {secret :: String.t(), guesses :: [String.t()], error :: String.t()}
+  @type game_state :: %{secret: String.t(), guesses: [String.t()], error: String.t()}
 
   @doc """
   Produces a blank game state, with empty guesses and a randomly
