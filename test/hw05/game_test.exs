@@ -102,6 +102,7 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.add_player({"foo", :player})
     |> Bulls.Game.ready_player("foo")
     |> Bulls.Game.guess("foo", "1234")
+    |> Bulls.Game.finish_round()
     |> Bulls.Game.guess("foo", "5678")
     assert Map.get(result.guesses, "foo") == ["1234"]
     assert Map.get(result.errors, "foo") == "Game already concluded. Please start a new game."
@@ -135,7 +136,7 @@ defmodule Bulls.GameTest do
   end
 
   test "guess does not allow 1123" do
-    result = Bulls.Game.new
+    result = Bulls.Game.new()
     |> Bulls.Game.add_player({"foo", :player})
     |> Bulls.Game.ready_player("foo")
     |> Bulls.Game.guess("foo", "1123")
@@ -143,69 +144,50 @@ defmodule Bulls.GameTest do
     assert Map.get(result.errors, "foo") == "Guess may not contain duplicate digits."
   end
 
-  #test "view converts guess with no hits" do
-  #  result = %{secret: "1234", guesses: MapSet.new , error: ""}
-  #  |> Bulls.Game.guess("5678")
-  #  |> Bulls.Game.view()
-  #  refute result.won
-  #  refute result.lost
+  test "view sets lobby and winners for setup phase" do
+    result = Bulls.Game.new()
+    |> Bulls.Game.add_player({"bar", :observer})
+    |> Bulls.Game.view("bar")
 
-  #  [guess | _ ] = result.guesses
-  #  assert guess == %{
-  #    guess: "5678",
-  #    a: 0,
-  #    b: 0
-  #  }
-  #end
+    assert result.lobby
+    assert result.winners == []
+  end
 
-  #test "view converts guesses with hits" do
-  #  result = %{secret: "1234", guesses: MapSet.new, error: ""}
-  #   |> Bulls.Game.guess("1432")
-  #   |> Bulls.Game.guess("1256")
-  #   |> Bulls.Game.guess("1235")
-  #   |> Bulls.Game.guess("4321")
-  #   |> Bulls.Game.view()
-  #   refute result.won
-  #   refute result.lost
+  test "view sets lobby and winners for play phase" do
+    result = Bulls.Game.new()
+    |> Bulls.Game.add_player({"bar", :player})
+    |> Bulls.Game.ready_player("bar")
+    |> Bulls.Game.view("bar")
 
-  #   assert Enum.sort(result.guesses) == [
-  #     %{a: 0, b: 4, guess: "4321"},
-  #     %{a: 2, b: 0, guess: "1256"},
-  #     %{a: 2, b: 2, guess: "1432"},
-  #     %{a: 3, b: 0, guess: "1235"}
-  #   ]
-  # end
+    refute result.lobby
+    assert result.winners == []
+  end
 
-  # test "view notifies win" do
-  #   result = %{secret: "1234", guesses: MapSet.new, error: ""}
-  #   |> Bulls.Game.guess("4321")
-  #   |> Bulls.Game.guess("5678")
-  #   |> Bulls.Game.guess("8765")
-  #   |> Bulls.Game.guess("1235")
-  #   |> Bulls.Game.guess("4325")
-  #   |> Bulls.Game.guess("5674")
-  #   |> Bulls.Game.guess("8764")
-  #   |> Bulls.Game.guess("1234")
-  #   |> Bulls.Game.view()
+  test "view sets lobby and winners for result phase" do
+    result = Bulls.Game.new()
+    result = %{result | secret: "1234"}
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.add_player({"bar", :player})
+    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("bar")
+    |> Bulls.Game.guess("foo", "1234")
+    |> Bulls.Game.guess("bar", "1234")
+    |> Bulls.Game.view("foo")
 
-  #   assert result.won
-  #   refute result.lost
-  # end
+    refute result.lobby
+    assert result.winners == ["foo", "bar"]
+  end
 
-  # test "view notifies loss" do
-  #   result = %{secret: "1111", guesses: MapSet.new, error: ""}
-  #   |> Bulls.Game.guess("4321")
-  #   |> Bulls.Game.guess("5678")
-  #   |> Bulls.Game.guess("8765")
-  #   |> Bulls.Game.guess("1235")
-  #   |> Bulls.Game.guess("4325")
-  #   |> Bulls.Game.guess("5674")
-  #   |> Bulls.Game.guess("8764")
-  #   |> Bulls.Game.guess("9876")
-  #   |> Bulls.Game.guess("1234")
-  #   |> Bulls.Game.view()
+  test "view sets bulls and cows" do
+    result = Bulls.Game.new()
+    result = %{result | secret: "1245"}
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.guess("foo", "1234")
+    |> Bulls.Game.view("foo")
 
-  #   refute result.won
-  #   assert result.lost
-  # end
+    assert Enum.sort(result.guesses) == [
+      %{guess: "1234", a: 2, b: 1}
+    ]
+  end
 end

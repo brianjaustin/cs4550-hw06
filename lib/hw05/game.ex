@@ -181,12 +181,31 @@ defmodule Bulls.Game do
     player_guesses = Map.get(gs, player, [])
     player_guesses = Enum.dedup([num | player_guesses])
 
-    result = %{st | guesses: Map.put(gs, player, player_guesses)}
+    %{st | guesses: Map.put(gs, player, player_guesses)}
+  end
 
-    if num == Map.get(st, :secret) do
-      %{result | phase: :result}
+  @doc """
+  Does book keeping at the end of a game play round,
+  including setting the state if a correct guess has been made.
+
+  ## Arguments
+
+    - st: game state
+
+  ## Examples
+
+    iex> Bulls.Game.finish_round(%{secret: "1234", guesses: %{}, phase: :guess})
+    %{secret: "1234", guesses: %{}, phase: :guess}
+
+    iex> Bulls.Game.finish_round(%{secret: "1234", guesses: %{"foo" => ["1234"]}, phase: :guess})
+    %{secret: "1234", guesses: %{"foo" => ["1234"]}, phase: :result}
+  """
+  @spec finish_round(game_state) :: game_state
+  def finish_round(st) do
+    if Enum.empty?(get_winners(st)) do
+      st
     else
-      result
+      %{st | phase: :result}
     end
   end
 
@@ -196,15 +215,16 @@ defmodule Bulls.Game do
 
   ## Parameters
     - st: game state
+    - player: name of the player who is viewing the state
   """
-  @spec view(game_state) :: %{guesses: [guess_view], won: boolean, lost: boolean}
-  def view(st) do
-    game_won = won?(st)
+  @spec view(game_state, String.t()) :: %{guesses: [guess_view], winners: [String.t()]}
+  def view(st, player) do
+    player_guesses = Map.get(st.guesses, player, [])
     %{
-      guesses: Enum.map(st.guesses, &(view_guess(&1, st.secret))),
-      won: game_won,
-      lost: lost?(st) and not game_won,
-      error: Map.get(st, :error, "")
+      guesses: Enum.map(player_guesses, &(view_guess(&1, st.secret))),
+      lobby: st.phase == :setup,
+      winners: get_winners(st),
+      errors: Map.get(st, :error, "")
     }
   end
 
@@ -223,7 +243,10 @@ defmodule Bulls.Game do
     |> Map.put(:guess, guess)
   end
 
-  defp won?(st), do: st.secret in st.guesses
-  
-  defp lost?(st), do: MapSet.size(st.guesses) > 7
+  defp get_winners(st) do
+    Enum.reduce(st.guesses, [], fn({player, guesses}, acc) ->
+      if st.secret in guesses, do: [player | acc], else: acc
+    end)
+  end
+
 end
