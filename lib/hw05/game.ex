@@ -16,12 +16,27 @@ defmodule Bulls.Game do
     [Notes are here](https://github.com/NatTuck/scratch-2021-01/blob/master/notes-4550/07-phoenix/notes.md).
   """
 
+  @typedoc "Participant in a game, either active (player) or passive (observer)"
+  @type game_participant :: {String.t(), :player} | {String.t(), :observer}
+
+  @typedoc "Represents a guess with number of bulls and cows"
+  @type game_guess :: {String.t(), String.t(), non_neg_integer, non_neg_integer}
+
+  @typedoc "Represents internal game state"
+  @type game_state :: %{
+    phase: :setup | :guess | :result,
+    participants: %{String.t() => :player} | %{String.t() => :observer},
+    secret: String.t(),
+    guesses: %{String.t() => [game_guess]},
+    error: String.t()
+  }
+
+  @typedoc "Represents a user visible guess result"
   @type guess_view :: %{
     guess: String.t(),
     a: non_neg_integer,
     b: non_neg_integer
   }
-  @type game_state :: %{secret: String.t(), guesses: [String.t()], error: String.t()}
 
   @doc """
   Produces a blank game state, with empty guesses and a randomly
