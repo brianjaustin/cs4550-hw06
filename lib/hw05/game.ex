@@ -146,33 +146,47 @@ defmodule Bulls.Game do
   ## Parameters
 
     - st: existing game state, including secret and previous guesses
+    - player: name of the player making the guess
     - num: new guess to add to the game state
-
-  ## Examples
-
-    iex> state = Bulls.Game.guess(%{secret: 1234, guesses: MapSet.new, error: ""}, "4567")
-    iex> state.secret
-    1234
-    iex> state.guesses
-    #MapSet<["4567"]>
-
-    iex> state = Bulls.Game.guess(%{secret: 1234, guesses: MapSet.new, error: ""}, "0123")
-    iex> state.error
-    "Invalid guess '0123'. Must be a four-digit number with unique digits"
   """
-  @spec guess(game_state, String.t()) :: game_state
-  def guess(st, num) do
+  @spec guess(game_state, String.t(), String.t()) :: game_state
+  def guess(st, player, num) do
+    # Pull out some important state keys here,
+    # because pattern matching for maps inevitably
+    # leads to disappointment.
+    es = Map.get(st, :errors)
+    ps = Map.get(st, :participants)
+
     num_digits = String.graphemes(num)
     cond do
-      won?(st) ->
-        %{st | error: "Game already won. Please start a new game."}
-      lost?(st) ->
-        %{st | error: "Game lost. Please start a new game."}
+      Map.get(st, :phase) == :setup ->
+        %{st | errors: Map.put(es, player, "Game not yet started.")}
+      Map.get(st, :phase) == :result ->
+        %{st | errors: Map.put(es, player, "Game already concluded. Please start a new game.")}
+      Map.get(ps, player, :observer) != :player ->
+        %{st | errors: Map.put(es, player, "Only ready players may place guesses.")}
       Enum.dedup(num_digits) != num_digits ->
-        %{st | error: "Guess may not contain duplicate digits."}
+        %{st | errors: Map.put(es, player, "Guess may not contain duplicate digits.")}
       Regex.match?(~r/^[1-9]\d{3}$/, num) ->
-        %{st | guesses: MapSet.put(st.guesses, num), error: ""}
-      true -> %{st | error: "Invalid guess '#{num}'. Must be a four-digit number with unique digits"}
+        do_guess(%{st | errors: Map.put(es, player, "")}, player, num)
+      true ->
+        %{st | errors: Map.put(
+          es, player, "Invalid guess '#{num}'. Must be a four-digit number with unique digits"
+        )}
+    end
+  end
+
+  defp do_guess(st, player, num) do
+    gs = Map.get(st, :guesses)
+    player_guesses = Map.get(gs, player, [])
+    player_guesses = Enum.dedup([num | player_guesses])
+
+    result = %{st | guesses: Map.put(gs, player, player_guesses)}
+
+    if num == Map.get(st, :secret) do
+      %{result | phase: :result}
+    else
+      result
     end
   end
 
