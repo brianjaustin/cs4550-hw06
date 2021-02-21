@@ -25,10 +25,10 @@ defmodule Bulls.Game do
   @typedoc "Represents internal game state"
   @type game_state :: %{
     phase: :setup | :guess | :result,
-    participants: %{String.t() => :player} | %{String.t() => :observer},
+    participants: %{String.t() => :lobby_player | :player | :observer},
     secret: String.t(),
     guesses: %{String.t() => [game_guess]},
-    error: String.t()
+    errors: %{String.t() => String.t()}
   }
 
   @typedoc "Represents a user visible guess result"
@@ -49,7 +49,7 @@ defmodule Bulls.Game do
       participants: %{},
       secret: gen_secret(),
       guesses: %{},
-      error: ""
+      errors: %{}
     }
   end
 
@@ -77,7 +77,7 @@ defmodule Bulls.Game do
   ## Examples
 
     iex> Bulls.Game.add_player(%{phase: :setup, participants: %{}}, {"foo", :player})
-    %{participants: %{"foo" => :player}, phase: :setup}
+    %{participants: %{"foo" => :lobby_player}, phase: :setup}
 
     iex> Bulls.Game.add_player(%{phase: :setup, participants: %{"foo" => :player}}, {"bar", :observer})
     %{participants: %{"foo" => :player, "bar" => :observer}, phase: :setup}
@@ -86,12 +86,57 @@ defmodule Bulls.Game do
     %{participants: %{"foo" => :observer}, phase: :play}
   """
   @spec add_player(game_state, game_participant) :: game_state
-  def add_player(%{phase: :setup, participants: ps} = st, {pname, ptype}) do
-    %{st | participants: Map.put(ps, pname, ptype)}
+  def add_player(st, {pname, :player}) do
+    ps = Map.get(st, :participants)
+
+    if  Map.get(st, :phase) != :setup do
+      %{st | participants: Map.put(ps, pname, :observer)}
+    else
+      %{st | participants: Map.put(ps, pname, :lobby_player)}
+    end
   end
 
-  def add_player(%{participants: ps} = st, {pname, _}) do
+  def add_player(st, {pname, :observer}) do
+    ps = Map.get(st, :participants)
     %{st | participants: Map.put(ps, pname, :observer)}
+  end
+
+  @doc """
+  Marks a player as ready to play. Observers remain observers
+  if they attempt to become ready to play.
+
+  ## Arguments
+
+    - st: current game state
+    - pname: name of the player to mark as ready
+
+  ## Examples
+
+    iex> Bulls.Game.ready_player(%{participants: %{"baz" => :player}, phase: :setup}, "foo")
+    %{participants: %{"baz" => :player}, phase: :setup}
+
+    iex> Bulls.Game.ready_player(%{participants: %{"foo" => :lobby_player}, phase: :setup}, "foo")
+    %{participants: %{"foo" => :player}, phase: :guess}
+
+    iex> Bulls.Game.ready_player(%{participants: %{"bar" => :observer}, phase: :setup}, "bar")
+    %{participants: %{"bar" => :observer}, phase: :setup}
+  """
+  @spec ready_player(game_state, String.t()) :: game_state
+  def ready_player(st, pname) do
+    ps = Map.get(st, :participants)
+
+    if Map.get(ps, pname) == :lobby_player do
+      result = %{st | participants: Map.put(ps, pname, :player)}
+
+      if Enum.all?(Map.get(result, :participants),fn {_, type} -> type != :lobby_player end)
+      do
+        %{result | phase: :guess}
+      else
+        result
+      end
+    else
+      st
+    end
   end
 
   @doc """
