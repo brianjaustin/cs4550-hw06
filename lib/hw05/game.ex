@@ -64,6 +64,37 @@ defmodule Bulls.Game do
   end
 
   @doc """
+  Adds a participant to the given game. If the game is in its setup phase,
+  participants may be added as either players (allowed to place guesses)
+  or observers (not allowed to guess). For all other states, the requested
+  participant will be ignored and the participant will be added as an observer.
+
+  ## Arguments
+
+    - st: the current game state
+    - participant: participant, including name and requested type
+
+  ## Examples
+
+    iex> Bulls.Game.add_player(%{phase: :setup, participants: %{}}, {"foo", :player})
+    %{participants: %{"foo" => :player}, phase: :setup}
+
+    iex> Bulls.Game.add_player(%{phase: :setup, participants: %{"foo" => :player}}, {"bar", :observer})
+    %{participants: %{"foo" => :player, "bar" => :observer}, phase: :setup}
+
+    iex> Bulls.Game.add_player(%{phase: :play, participants: %{}}, {"foo", :player})
+    %{participants: %{"foo" => :observer}, phase: :play}
+  """
+  @spec add_player(game_state, game_participant) :: game_state
+  def add_player(%{phase: :setup, participants: ps} = st, {pname, ptype}) do
+    %{st | participants: Map.put(ps, pname, ptype)}
+  end
+
+  def add_player(%{participants: ps} = st, {pname, _}) do
+    %{st | participants: Map.put(ps, pname, :observer)}
+  end
+
+  @doc """
   Update an existing game state with a new guess. The guess will
   be validated in the process.
 
