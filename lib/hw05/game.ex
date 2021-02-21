@@ -42,11 +42,13 @@ defmodule Bulls.Game do
   Produces a blank game state, with empty guesses and a randomly
   generated secret.
   """
-  @spec new :: game_state
-  def new do
+  @spec new() :: game_state
+  def new() do
     %{
+      phase: :setup,
+      participants: %{},
       secret: gen_secret(),
-      guesses: MapSet.new,
+      guesses: %{},
       error: ""
     }
   end
