@@ -42,6 +42,35 @@ defmodule Bulls.GameServer do
   def join(name, participant) do
     GenServer.call(reg(name), {:join, name, participant})
   end
+
+  @doc """
+  Renders the current game in a user-viewable format.
+  Internal information like secret is stripped out.
+
+  ## Arguments
+
+    - name: name of the game to view
+    - participant: name of the participant who is viewing the game
+  """
+  @spec view(String.t(), String.t()) :: term
+  def view(name, participant) do
+    GenServer.call(reg(name), {:view, name, participant})
+  end
+
+  @doc """
+  Submits a guess for a game participant. Note that only active players
+  may guess, other guesses will be ignored.
+
+  ## Arguments
+
+    - name: name of the game in which to guess
+    - participant: name of the participant who is guessing
+    - number: string guess
+  """
+  @spec guess(String.t(), String.t(), String.t()) :: term
+  def guess(name, participant, number) do
+    GenServer.call(reg(name), {:guess, name, participant, number})
+  end
   
   defp reg(name), do: {:via, Registry, {Bulls.GameRegistry, name}}
 
@@ -54,6 +83,17 @@ defmodule Bulls.GameServer do
 
   def handle_call({:join, name, participant}, _from, game) do
     game = Bulls.Game.add_player(game, participant)
+    Bulls.BackupAgent.put(name, game)
+    {:reply, game, game}
+  end
+
+  def handle_call({:view, _name, participant}, _from, game) do
+    view = Bulls.Game.view(game, participant)
+    {:reply, view, view}
+  end
+
+  def handle_call({:guess, name, participant, number}, _from, game) do
+    game = Bulls.Game.guess(game, participant, number)
     Bulls.BackupAgent.put(name, game)
     {:reply, game, game}
   end
