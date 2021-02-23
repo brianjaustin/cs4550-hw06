@@ -6,9 +6,9 @@ defmodule Bulls.Game do
 
     First, a random 4-digit number is generated. This random secret
     must be between 1000 and 9999, and there may be no repeating digits
-    (so 1233 and 0123 are invalid secrets). Next, a single player inputs
-    _valid_ attempts to guess the secret number. If the player guesses
-    correctly in fewer than 8 attempts, the game is won; otherwise, they lose.
+    (so 1233 and 0123 are invalid secrets). Next, players input
+    _valid_ attempts to guess the secret number. The player(s) to guess
+    the secret in the fewest number of rounds win.
 
   ## Attribution
 
@@ -36,6 +36,14 @@ defmodule Bulls.Game do
     guess: String.t(),
     a: non_neg_integer,
     b: non_neg_integer
+  }
+
+  @type game_view :: %{
+    guesses: %{String.t() => guess_view},
+    participants: %{String.t() => :player | :observer},
+    winners: [String.t()],
+    lobby: boolean,
+    errors: [String.t()]
   }
 
   @doc """
@@ -215,17 +223,24 @@ defmodule Bulls.Game do
 
   ## Parameters
     - st: game state
-    - player: name of the player who is viewing the state
   """
-  @spec view(game_state, String.t()) :: %{guesses: [guess_view], winners: [String.t()]}
-  def view(st, player) do
-    player_guesses = Map.get(st.guesses, player, [])
+  @spec view(game_state) :: game_view
+  def view(st) do
+    guess_views = st.guesses
+    |> Enum.map(&view_guesses(&1, st.secret))
+    |> Enum.into(%{})
     %{
-      guesses: Enum.map(player_guesses, &(view_guess(&1, st.secret))),
+      guesses: guess_views,
       lobby: st.phase == :setup,
+      participants: st.participants,
       winners: get_winners(st),
       errors: Map.get(st, :error, "")
     }
+  end
+
+  defp view_guesses({player, guesses}, secret) do
+    guesses = Enum.map(guesses, &view_guess(&1, secret))
+    {player, guesses}
   end
 
   defp view_guess(guess, secret) do
