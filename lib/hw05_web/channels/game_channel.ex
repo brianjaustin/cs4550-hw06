@@ -35,6 +35,17 @@ defmodule BullsWeb.GameChannel do
   end
 
   @impl true
+  def handle_in("ready", _payload, socket) do
+    name = socket.assigns[:name]
+    participant = socket.assigns[:participant]
+    view = name
+    |> Bulls.GameServer.ready(participant)
+    |> Bulls.GameServer.view(participant)
+
+    {:reply, {:ok, view}, socket}
+  end
+
+  @impl true
   def handle_in("guess", %{"number" => n}, socket) do
     participant = socket.assigns[:participant]
     view = socket.assigns[:name]

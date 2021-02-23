@@ -44,6 +44,20 @@ defmodule Bulls.GameServer do
   end
 
   @doc """
+  Mark a player as ready. Observers are assumed to be ready,
+  so marking one as 'ready' has no impact.
+
+  ## Argument
+
+    - name: name of the game in which to mark someone ready
+    - participant: name of the participant to mark
+  """
+  @spec ready(String.t(), String.t()) :: term
+  def ready(name, participant) do
+    GenServer.call(reg(name), {:ready, name, participant})
+  end
+
+  @doc """
   Renders the current game in a user-viewable format.
   Internal information like secret is stripped out.
 
@@ -76,13 +90,18 @@ defmodule Bulls.GameServer do
 
   # Implementation
 
-  # TODO: can this be private?
   def init(game) do
     {:ok, game}
   end
 
   def handle_call({:join, name, participant}, _from, game) do
     game = Bulls.Game.add_player(game, participant)
+    Bulls.BackupAgent.put(name, game)
+    {:reply, game, game}
+  end
+
+  def handle_call({:ready, name, participant}, _from, game) do
+    game = Bulls.Game.ready_player(game, participant)
     Bulls.BackupAgent.put(name, game)
     {:reply, game, game}
   end
