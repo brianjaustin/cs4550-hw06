@@ -18,7 +18,7 @@ defmodule Bulls.GameTest do
   test "add_player adds player when game is in setup" do
     result = Bulls.Game.new()
     |> Bulls.Game.add_player({"foo", :player})
-    assert result.participants == %{"foo" => :lobby_player}
+    assert result.participants == %{"foo" => :pending_player}
   end
 
   test "add_player adds observer when game is in setup" do

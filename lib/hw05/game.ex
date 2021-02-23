@@ -25,7 +25,7 @@ defmodule Bulls.Game do
   @typedoc "Represents internal game state"
   @type game_state :: %{
     phase: :setup | :guess | :result,
-    participants: %{String.t() => :lobby_player | :player | :observer},
+    participants: %{String.t() => :pending_player | :player | :observer},
     secret: String.t(),
     guesses: %{String.t() => [game_guess]},
     errors: %{String.t() => String.t()}
@@ -77,7 +77,7 @@ defmodule Bulls.Game do
   ## Examples
 
     iex> Bulls.Game.add_player(%{phase: :setup, participants: %{}}, {"foo", :player})
-    %{participants: %{"foo" => :lobby_player}, phase: :setup}
+    %{participants: %{"foo" => :pending_player}, phase: :setup}
 
     iex> Bulls.Game.add_player(%{phase: :setup, participants: %{"foo" => :player}}, {"bar", :observer})
     %{participants: %{"foo" => :player, "bar" => :observer}, phase: :setup}
@@ -92,7 +92,7 @@ defmodule Bulls.Game do
     if  Map.get(st, :phase) != :setup do
       %{st | participants: Map.put(ps, pname, :observer)}
     else
-      %{st | participants: Map.put(ps, pname, :lobby_player)}
+      %{st | participants: Map.put(ps, pname, :pending_player)}
     end
   end
 
@@ -115,7 +115,7 @@ defmodule Bulls.Game do
     iex> Bulls.Game.ready_player(%{participants: %{"baz" => :player}, phase: :setup}, "foo")
     %{participants: %{"baz" => :player}, phase: :setup}
 
-    iex> Bulls.Game.ready_player(%{participants: %{"foo" => :lobby_player}, phase: :setup}, "foo")
+    iex> Bulls.Game.ready_player(%{participants: %{"foo" => :pending_player}, phase: :setup}, "foo")
     %{participants: %{"foo" => :player}, phase: :guess}
 
     iex> Bulls.Game.ready_player(%{participants: %{"bar" => :observer}, phase: :setup}, "bar")
@@ -125,10 +125,10 @@ defmodule Bulls.Game do
   def ready_player(st, pname) do
     ps = Map.get(st, :participants)
 
-    if Map.get(ps, pname) == :lobby_player do
+    if Map.get(ps, pname) == :pending_player do
       result = %{st | participants: Map.put(ps, pname, :player)}
 
-      if Enum.all?(Map.get(result, :participants),fn {_, type} -> type != :lobby_player end)
+      if Enum.all?(Map.get(result, :participants),fn {_, type} -> type != :pending_player end)
       do
         %{result | phase: :guess}
       else
