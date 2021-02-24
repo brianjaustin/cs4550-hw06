@@ -31,6 +31,7 @@ defmodule BullsWeb.GameChannel do
     |> assign(:participant, pname)
 
     view = Bulls.GameServer.view(name)
+    broadcast(socket, "view", view)
     {:ok, view, socket}
   end
 
@@ -42,6 +43,7 @@ defmodule BullsWeb.GameChannel do
     |> Bulls.GameServer.ready(participant)
     |> Bulls.GameServer.view()
 
+    broadcast(socket, "view", view)
     {:reply, {:ok, view}, socket}
   end
 
