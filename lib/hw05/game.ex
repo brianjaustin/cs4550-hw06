@@ -241,7 +241,9 @@ defmodule Bulls.Game do
   end
 
   defp view_guesses({player, guesses}, secret) do
-    guesses = Enum.map(guesses, &view_guess(&1, secret))
+    guesses = guesses
+    |> Enum.map(&view_guess(&1, secret))
+    |> Enum.reverse()
     {player, guesses}
   end
 
