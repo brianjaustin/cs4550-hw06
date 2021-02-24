@@ -123,20 +123,21 @@ defmodule Bulls.Game do
 
     - st: current game state
     - pname: name of the player to mark as ready
+    - sched: callback for scheduling round maintenance
 
   ## Examples
 
-    iex> Bulls.Game.ready_player(%{participants: %{"baz" => :player}, guesses: %{}, round: 0}, "foo")
+    iex> Bulls.Game.ready_player(%{participants: %{"baz" => :player}, guesses: %{}, round: 0}, "foo", &Function.identity/1)
     %{participants: %{"baz" => :player}, guesses: %{}, round: 0}
 
-    iex> Bulls.Game.ready_player(%{participants: %{"foo" => :pending_player}, guesses: %{}, round: 0}, "foo")
+    iex> Bulls.Game.ready_player(%{participants: %{"foo" => :pending_player}, guesses: %{}, round: 0}, "foo", &Function.identity/1)
     %{participants: %{"foo" => :player}, guesses: %{"foo" => []}, round: 1}
 
-    iex> Bulls.Game.ready_player(%{participants: %{"bar" => :observer}, guesses: %{}, round: 0}, "bar")
+    iex> Bulls.Game.ready_player(%{participants: %{"bar" => :observer}, guesses: %{}, round: 0}, "bar", &Function.identity/1)
     %{participants: %{"bar" => :observer}, guesses: %{}, round: 0}
   """
-  @spec ready_player(game_state, String.t()) :: game_state
-  def ready_player(st, pname) do
+  @spec ready_player(game_state, String.t(), (non_neg_integer -> term)) :: game_state
+  def ready_player(st, pname, sched) do
     if Map.get(st.participants, pname) == :pending_player do
       result = %{
         st |
@@ -146,6 +147,7 @@ defmodule Bulls.Game do
 
       if Enum.all?(result.participants, fn {_, type} -> type != :pending_player end)
       do
+        sched.(1)
         %{result | round: 1}
       else
         result
@@ -209,28 +211,28 @@ defmodule Bulls.Game do
   @doc """
   Does book keeping at the end of a game play round,
   including setting the state if a correct guess has been made.
+  If the active round is not the one expected, ignore the request.
 
   ## Arguments
 
     - st: game state
-
-  ## Examples
-
-    iex> Bulls.Game.finish_round(%{secret: "1234", participants: %{"foo" => :player}, guesses: %{"foo" => []}, round: 1})
-    %{secret: "1234", participants: %{"foo" => :player}, guesses: %{"foo" => [{"----", 1}]}, round: 2}
-
-    iex> Bulls.Game.finish_round(%{secret: "1234", guesses: %{"foo" => [{"1234", 1}]}, round: 2})
-    %{secret: "1234", guesses: %{"foo" => [{"1234", 1}]}, round: :result}
+    - round: the round to target
+    - sched: callback for scheduling next round maintenance
   """
-  @spec finish_round(game_state) :: game_state
-  def finish_round(st) do
-    if Enum.empty?(get_winners(st)) do
-      guesses = st.guesses
-      |> Enum.map(fn {player, guesses} -> {player, pass_player(st, guesses)} end)
-      |> Enum.into(%{})
-      %{st | guesses: guesses, round: st.round + 1}
-    else
-      %{st | round: :result}
+  @spec finish_round(game_state, non_neg_integer, (non_neg_integer -> term)) :: game_state
+  def finish_round(st, round, sched) do
+    cond do
+      st.round != round ->
+        st
+      Enum.empty?(get_winners(st)) ->
+        new_round = st.round + 1
+        guesses = st.guesses
+        |> Enum.map(fn {player, guesses} -> {player, pass_player(st, guesses)} end)
+        |> Enum.into(%{})
+        sched.(new_round)
+        %{st | guesses: guesses, round: new_round}
+      true ->
+        %{st | round: :result}
     end
   end
 

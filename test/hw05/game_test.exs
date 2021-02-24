@@ -59,9 +59,9 @@ defmodule Bulls.GameTest do
     result = Bulls.Game.new()
     result = %{result | secret: "1111"}
     |> Bulls.Game.add_player({"foo", :player})
-    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
     |> Bulls.Game.guess("foo", "4567")
-    |> Bulls.Game.finish_round()
+    |> Bulls.Game.finish_round(1, &Function.identity/1)
     |> Bulls.Game.guess("foo", "1234")
     assert Enum.count(result.guesses) == 1
     assert Map.get(result.guesses, "foo") == [{"1234", 2}, {"4567", 1}]
@@ -71,7 +71,7 @@ defmodule Bulls.GameTest do
     result = Bulls.Game.new()
     result = %{result | secret: "1111"}
     |> Bulls.Game.add_player({"foo", :player})
-    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
     |> Bulls.Game.guess("foo", "4567")
     |> Bulls.Game.guess("foo", "1234")
     assert Enum.count(result.guesses) == 1
@@ -82,9 +82,9 @@ defmodule Bulls.GameTest do
     result = Bulls.Game.new()
     result = %{result | secret: "1111"}
     |> Bulls.Game.add_player({"foo", :player})
-    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
     |> Bulls.Game.guess("foo", "1234")
-    |> Bulls.Game.finish_round()
+    |> Bulls.Game.finish_round(1, &Function.identity/1)
     |> Bulls.Game.guess("foo", "1234")
     assert Enum.count(result.guesses) == 1
     assert Map.get(result.guesses, "foo") == [{"1234", 1}]
@@ -93,7 +93,7 @@ defmodule Bulls.GameTest do
   test "guess returns an error for word" do
     result = Bulls.Game.new()
     |> Bulls.Game.add_player({"foo", :player})
-    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.guess("foo", "abc1234")
     assert Map.get(result.guesses, "foo") == [{"1234", 1}]
@@ -113,9 +113,9 @@ defmodule Bulls.GameTest do
     result = Bulls.Game.new()
     result = %{result | secret: "1234"}
     |> Bulls.Game.add_player({"foo", :player})
-    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
     |> Bulls.Game.guess("foo", "1234")
-    |> Bulls.Game.finish_round()
+    |> Bulls.Game.finish_round(1, &Function.identity/1)
     |> Bulls.Game.guess("foo", "5678")
     assert Map.get(result.guesses, "foo") == [{"1234", 1}]
     assert Map.get(result.errors, "foo") == "Game already concluded. Please start a new game."
@@ -125,7 +125,7 @@ defmodule Bulls.GameTest do
     result = Bulls.Game.new()
     result = %{result | secret: "1234", round: 1}
     |> Bulls.Game.add_player({"foo", :observer})
-    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
     |> Bulls.Game.guess("foo", "1234")
     assert Map.get(result.guesses, "foo") == nil
     assert Map.get(result.errors, "foo") == "Only ready players may place guesses."
@@ -151,10 +151,41 @@ defmodule Bulls.GameTest do
   test "guess does not allow 1123" do
     result = Bulls.Game.new()
     |> Bulls.Game.add_player({"foo", :player})
-    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
     |> Bulls.Game.guess("foo", "1123")
     assert Map.get(result.guesses, "foo") == []
     assert Map.get(result.errors, "foo") == "Guess may not contain duplicate digits."
+  end
+
+  test "finish_round passes for current round" do
+    result = Bulls.Game.new()
+    result = %{result | secret: "1111"}
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
+    |> Bulls.Game.finish_round(1, &Function.identity/1)
+    assert result.round == 2
+    assert Map.get(result.guesses, "foo") == [{"----", 1}]
+  end
+
+  test "finish_round does not pass for current round if guessed" do
+    result = Bulls.Game.new()
+    result = %{result | secret: "1111"}
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
+    |> Bulls.Game.guess("foo", "1234")
+    |> Bulls.Game.finish_round(1, &Function.identity/1)
+    assert result.round == 2
+    assert Map.get(result.guesses, "foo") == [{"1234", 1}]
+  end
+
+  test "finish_round does not pass for old round" do
+    result = Bulls.Game.new()
+    result = %{result | secret: "1111", round: 2}
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
+    |> Bulls.Game.finish_round(1, &Function.identity/1)
+    assert result.round == 2
+    assert Map.get(result.guesses, "foo") == []
   end
 
   test "view sets lobby and winners for setup phase" do
@@ -169,7 +200,7 @@ defmodule Bulls.GameTest do
   test "view sets lobby and winners for play phase" do
     result = Bulls.Game.new()
     |> Bulls.Game.add_player({"bar", :player})
-    |> Bulls.Game.ready_player("bar")
+    |> Bulls.Game.ready_player("bar", &Function.identity/1)
     |> Bulls.Game.view()
 
     refute result.lobby
@@ -181,8 +212,8 @@ defmodule Bulls.GameTest do
     result = %{result | secret: "1234"}
     |> Bulls.Game.add_player({"foo", :player})
     |> Bulls.Game.add_player({"bar", :player})
-    |> Bulls.Game.ready_player("foo")
-    |> Bulls.Game.ready_player("bar")
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
+    |> Bulls.Game.ready_player("bar", &Function.identity/1)
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.guess("bar", "1234")
     |> Bulls.Game.view()
@@ -196,11 +227,11 @@ defmodule Bulls.GameTest do
     result = %{result | secret: "1245"}
     |> Bulls.Game.add_player({"foo", :player})
     |> Bulls.Game.add_player({"bar", :player})
-    |> Bulls.Game.ready_player("bar")
-    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("bar", &Function.identity/1)
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.guess("bar", "5432")
-    |> Bulls.Game.finish_round()
+    |> Bulls.Game.finish_round(1, &Function.identity/1)
     |> Bulls.Game.view()
 
     assert result.guesses == %{
@@ -214,8 +245,8 @@ defmodule Bulls.GameTest do
     result = %{result | secret: "1245"}
     |> Bulls.Game.add_player({"foo", :player})
     |> Bulls.Game.add_player({"bar", :player})
-    |> Bulls.Game.ready_player("bar")
-    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("bar", &Function.identity/1)
+    |> Bulls.Game.ready_player("foo", &Function.identity/1)
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.guess("bar", "5432")
     |> Bulls.Game.view()

@@ -101,20 +101,29 @@ defmodule Bulls.GameServer do
   end
 
   def handle_call({:ready, name, participant}, _from, game) do
-    game = Bulls.Game.ready_player(game, participant)
+    game = Bulls.Game.ready_player(game, participant, &sched_round/1)
     Bulls.BackupAgent.put(name, game)
     {:reply, game, game}
   end
 
   def handle_call({:view, _name}, _from, game) do
     view = Bulls.Game.view(game)
-    {:reply, view, view}
+    {:reply, view, game}
   end
 
   def handle_call({:guess, name, participant, number}, _from, game) do
     game = Bulls.Game.guess(game, participant, number)
     Bulls.BackupAgent.put(name, game)
     {:reply, game, game}
+  end
+
+  def handle_info({:maintain_round, round}, game) do
+    game = Bulls.Game.finish_round(game, round, &sched_round/1)
+    {:noreply, game}
+  end
+
+  defp sched_round(round) do
+    Process.send_after(self(), {:maintain_round, round}, 30_000)
   end
 
 end
