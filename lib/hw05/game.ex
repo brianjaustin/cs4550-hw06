@@ -27,7 +27,7 @@ defmodule Bulls.Game do
     phase: :setup | :guess | :result,
     participants: %{String.t() => :pending_player | :player | :observer},
     secret: String.t(),
-    guesses: %{String.t() => [game_guess]},
+    guesses: %{String.t() => [String.t()]},
     errors: %{String.t() => String.t()}
   }
 
@@ -185,11 +185,10 @@ defmodule Bulls.Game do
   end
 
   defp do_guess(st, player, num) do
-    gs = Map.get(st, :guesses)
-    player_guesses = Map.get(gs, player, [])
+    player_guesses = Map.get(st.guesses, player, [])
     player_guesses = Enum.dedup([num | player_guesses])
 
-    %{st | guesses: Map.put(gs, player, player_guesses)}
+    %{st | guesses: Map.put(st.guesses, player, player_guesses)}
   end
 
   @doc """
