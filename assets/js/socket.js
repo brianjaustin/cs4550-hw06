@@ -32,6 +32,16 @@ export function ch_push(type, msg) {
     .receive("error", resp => console.log("Unable to push", resp));
 }
 
+export function lobby_join(cb) {
+  let lobbyState = {players: ["David", "Patrick", "Alexis"], observers:["Roland", "Johnny", "Moira"]}
+  cb(lobbyState)
+}
+
+export function lobby_push(cb) {
+  let st = {players: ["David", "Patrick", "Alexis", "Ronnie"], observers:["Roland", "Johnny", "Moira"]}
+  cb(st)
+}
+
 channel.join()
   .receive("ok", state_update)
   .receive("error", resp => console.log("Unable to join", resp));
