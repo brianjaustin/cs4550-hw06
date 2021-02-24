@@ -29,28 +29,28 @@ defmodule Bulls.GameTest do
 
   test "add_player adds player when game is in guess" do
     result = Bulls.Game.new()
-    result = %{result | phase: :guess}
+    result = %{result | round: 1}
     |> Bulls.Game.add_player({"foo", :player})
     assert result.participants == %{"foo" => :observer}
   end
 
   test "add_player adds observer when game is in guess" do
     result = Bulls.Game.new()
-    result = %{result | phase: :guess}
+    result = %{result | round: 1}
     |> Bulls.Game.add_player({"foo", :observer})
     assert result.participants == %{"foo" => :observer}
   end
 
   test "add_player adds player when game is in result" do
     result = Bulls.Game.new()
-    result = %{result | phase: :result}
+    result = %{result | round: :result}
     |> Bulls.Game.add_player({"foo", :player})
     assert result.participants == %{"foo" => :observer}
   end
 
   test "add_player adds observer when game is in result" do
     result = Bulls.Game.new()
-    result = %{result | phase: :result}
+    result = %{result | round: :result}
     |> Bulls.Game.add_player({"foo", :observer})
     assert result.participants == %{"foo" => :observer}
   end
@@ -61,9 +61,21 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.add_player({"foo", :player})
     |> Bulls.Game.ready_player("foo")
     |> Bulls.Game.guess("foo", "4567")
+    |> Bulls.Game.finish_round()
     |> Bulls.Game.guess("foo", "1234")
     assert Enum.count(result.guesses) == 1
-    assert Map.get(result.guesses, "foo") == ["1234", "4567"]
+    assert Map.get(result.guesses, "foo") == [{"1234", 2}, {"4567", 1}]
+  end
+
+  test "guess does not overwrite if guessed in round" do
+    result = Bulls.Game.new()
+    result = %{result | secret: "1111"}
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.guess("foo", "4567")
+    |> Bulls.Game.guess("foo", "1234")
+    assert Enum.count(result.guesses) == 1
+    assert Map.get(result.guesses, "foo") == [{"4567", 1}]
   end
 
   test "guess does not add duplicate guess" do
@@ -72,9 +84,10 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.add_player({"foo", :player})
     |> Bulls.Game.ready_player("foo")
     |> Bulls.Game.guess("foo", "1234")
+    |> Bulls.Game.finish_round()
     |> Bulls.Game.guess("foo", "1234")
     assert Enum.count(result.guesses) == 1
-    assert Map.get(result.guesses, "foo") == ["1234"]
+    assert Map.get(result.guesses, "foo") == [{"1234", 1}]
   end
 
   test "guess returns an error for word" do
@@ -83,7 +96,7 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.ready_player("foo")
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.guess("foo", "abc1234")
-    assert Map.get(result.guesses, "foo") == ["1234"]
+    assert Map.get(result.guesses, "foo") == [{"1234", 1}]
     assert Map.get(result.errors, "foo") ==
       "Invalid guess 'abc1234'. Must be a four-digit number with unique digits"
   end
@@ -104,13 +117,13 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.finish_round()
     |> Bulls.Game.guess("foo", "5678")
-    assert Map.get(result.guesses, "foo") == ["1234"]
+    assert Map.get(result.guesses, "foo") == [{"1234", 1}]
     assert Map.get(result.errors, "foo") == "Game already concluded. Please start a new game."
   end
 
   test "guess returns an error if participant is an observer" do
     result = Bulls.Game.new()
-    result = %{result | secret: "1234", phase: :guess}
+    result = %{result | secret: "1234", round: 1}
     |> Bulls.Game.add_player({"foo", :observer})
     |> Bulls.Game.ready_player("foo")
     |> Bulls.Game.guess("foo", "1234")
@@ -120,7 +133,7 @@ defmodule Bulls.GameTest do
 
   test "guess returns an error if participant is an unready player" do
     result = Bulls.Game.new()
-    result = %{result | secret: "1234", phase: :guess}
+    result = %{result | secret: "1234", round: 1}
     |> Bulls.Game.add_player({"foo", :player})
     |> Bulls.Game.guess("foo", "1234")
     assert Map.get(result.guesses, "foo") == nil
@@ -129,7 +142,7 @@ defmodule Bulls.GameTest do
 
   test "guess returns an error for unknown participant" do
     result = Bulls.Game.new()
-    result = %{result | secret: "1234", phase: :guess}
+    result = %{result | secret: "1234", round: 1}
     |> Bulls.Game.guess("foo", "1234")
     assert Map.get(result.guesses, "foo") == nil
     assert Map.get(result.errors, "foo") == "Only ready players may place guesses."
@@ -140,7 +153,7 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.add_player({"foo", :player})
     |> Bulls.Game.ready_player("foo")
     |> Bulls.Game.guess("foo", "1123")
-    assert Map.get(result.guesses, "foo") == nil
+    assert Map.get(result.guesses, "foo") == []
     assert Map.get(result.errors, "foo") == "Guess may not contain duplicate digits."
   end
 
@@ -187,11 +200,29 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.ready_player("foo")
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.guess("bar", "5432")
+    |> Bulls.Game.finish_round()
     |> Bulls.Game.view()
 
     assert result.guesses == %{
       "bar" => [%{guess: "5432", a: 0, b: 3}],
       "foo" => [%{guess: "1234", a: 2, b: 1}]
+    }
+  end
+
+  test "view suppresses current round results" do
+    result = Bulls.Game.new()
+    result = %{result | secret: "1245"}
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.add_player({"bar", :player})
+    |> Bulls.Game.ready_player("bar")
+    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.guess("foo", "1234")
+    |> Bulls.Game.guess("bar", "5432")
+    |> Bulls.Game.view()
+
+    assert result.guesses == %{
+      "bar" => [],
+      "foo" => []
     }
   end
 end
