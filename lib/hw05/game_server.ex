@@ -88,6 +88,19 @@ defmodule Bulls.GameServer do
   def guess(name, participant, number) do
     GenServer.call(reg(name), {:guess, name, participant, number})
   end
+
+  @doc """
+  Resets a game early. As this may be invoked by a player in a fit of rage,
+  the win/loss counters won't be impacted unless someone has already won.
+
+  ## Arguments
+
+    - name: name of the game to reset
+  """
+  @spec reset(String.t()) :: term
+  def reset(name) do
+    GenServer.call(reg(name), {:reset, name})
+  end
   
   defp reg(name), do: {:via, Registry, {Bulls.GameRegistry, name}}
 
@@ -116,6 +129,12 @@ defmodule Bulls.GameServer do
 
   def handle_call({:guess, name, participant, number}, _from, game) do
     game = Bulls.Game.guess(game, participant, number)
+    Bulls.BackupAgent.put(name, game)
+    {:reply, game, game}
+  end
+
+  def handle_call({:reset, name}, _from, game) do
+    game = Bulls.Game.conclude(game)
     Bulls.BackupAgent.put(name, game)
     {:reply, game, game}
   end

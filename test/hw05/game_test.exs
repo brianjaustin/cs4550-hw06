@@ -199,6 +199,18 @@ defmodule Bulls.GameTest do
     assert Map.get(result.guesses, "foo") == nil
   end
 
+  test "conclude reset round, errors, and guesses" do
+    result = Bulls.Game.new(&Function.identity/1)
+    result = %{result | secret: "1111", round: 2}
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.finish_round(1)
+    |> Bulls.Game.conclude()
+    assert result.round == 0
+    assert result.errors == %{}
+    assert result.guesses == %{"foo" => []}
+  end
+
   test "view sets lobby and winners for setup phase" do
     result = Bulls.Game.new(&Function.identity/1)
     |> Bulls.Game.add_player({"bar", :observer})

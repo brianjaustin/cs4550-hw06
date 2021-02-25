@@ -282,6 +282,40 @@ defmodule Bulls.Game do
   end
 
   @doc """
+  Concludes the current game by generating a new secret and putting
+  players in the lobby.
+
+  ## Arguments
+
+    - st: game to conclude
+  """
+  @spec conclude(game_state) :: game_state
+  def conclude(st) do
+    guesses = st.participants
+    |> Enum.map(fn {p, _} -> {p, []} end)
+    |> Enum.into(%{})
+
+    participants = st.participants
+    |> Enum.map(fn {p, t} ->
+      if t == :player do
+        {p, :lobby_player}
+      else
+        {p, t}
+      end
+    end)
+    |> Enum.into(%{})
+
+    %{
+      st |
+      round: 0,
+      secret: gen_secret(),
+      guesses: guesses,
+      participants: participants,
+      errors: %{},
+    }
+  end
+
+  @doc """
   Transforms a game state into something viewable by clients (ie
   not containing the secret).
 

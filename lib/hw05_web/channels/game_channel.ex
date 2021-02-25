@@ -61,13 +61,18 @@ defmodule BullsWeb.GameChannel do
     Bulls.GameServer.guess(name, participant, n)
     view = Bulls.GameServer.view(name)
 
+    broadcast(socket, "view", view)
     {:reply, {:ok, view}, socket}
   end
 
   @impl true
   def handle_in("reset", _, socket) do
-    # TODO
-    {:reply, {:ok, nil}, socket}
+    name = socket.assigns[:name]
+    Bulls.GameServer.reset(name)
+    view = Bulls.GameServer.view(name)
+
+    broadcast(socket, "view", view)
+    {:reply, {:ok, view}, socket}
   end
 
 end
