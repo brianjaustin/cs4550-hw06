@@ -3,10 +3,12 @@ import {Socket} from "phoenix"
 let socket = new Socket("/socket", {params: {token: ""}});
 socket.connect();
 
-let channel = socket.channel("game:1", {});
+let channel = null;
 
 let gameState = {
   guesses: [],
+  participants: [],
+  lobby: true,
   won: false,
   lost: false,
   error: "",
@@ -21,7 +23,16 @@ function state_update(st) {
   }
 }
 
+export function ch_start(game_name, role) {
+  let channel = socket.channel(`game:${game_name}`, role);
+  channel
+    .join()
+    .receive("ok", state_update)
+    .receive("error", (resp) => console.log("Unable to join", resp));
+}
+
 export function ch_join(cb) {
+  console.log(gameState)
   callback = cb;
   callback(gameState);
 }
@@ -32,16 +43,4 @@ export function ch_push(type, msg) {
     .receive("error", resp => console.log("Unable to push", resp));
 }
 
-export function lobby_join(cb) {
-  let lobbyState = {players: ["David", "Patrick", "Alexis"], observers:["Roland", "Johnny", "Moira"]}
-  cb(lobbyState)
-}
 
-export function lobby_push(cb) {
-  let st = {players: ["David", "Patrick", "Alexis", "Ronnie"], observers:["Roland", "Johnny", "Moira"]}
-  cb(st)
-}
-
-channel.join()
-  .receive("ok", state_update)
-  .receive("error", resp => console.log("Unable to join", resp));

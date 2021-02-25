@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { ch_join, ch_push, lobby_join, lobby_push } from "./socket";
+import { ch_join, ch_push, ch_start } from "./socket";
 import _ from "lodash";
 
 function ErrorMessage({ msg }) {
@@ -23,7 +23,7 @@ function ErrorMessage({ msg }) {
   }
 }
 
-function LobbyJoin({join}) {
+function LobbyJoin() {
   const [currentName, setCurrentName] = useState({game: "", name: ""})
 
   function updateName(ev) {
@@ -43,8 +43,8 @@ function LobbyJoin({join}) {
   }
 
   function addPlayer(){
-    join(currentName.name)
-    setCurrentName("")
+    ch_start(currentName.game, {player: currentName.name})
+    setCurrentName({ game: "", name: "" });
   }
 
   return (
@@ -88,15 +88,7 @@ function LobbyReady({setReady}){
 
 }
 
-function Lobby({ startGame }) {
-  const [lobbyState, setLobbyState] = useState({
-    joined: false,
-    ready: false,
-    name: "",
-    role: "",
-    players: [["David", "Waiting"], ["Patrick", "Ready"], ["Alexis", "Waiting"]],
-    observers: ["Roland", "Johnny", "Moira"],
-  });
+function Lobby({ startGame, gameState }) {
 
   function displayPlayer(name, status){
     return (
@@ -107,107 +99,113 @@ function Lobby({ startGame }) {
     )
   }
 
-  function displayStatus(){
-    if (lobbyState.ready){
-      return "Ready"
-    } else {
-      return "Waiting for Ready"
-    }
-  }
-
-  function displaySelf(){
-    if (lobbyState.joined && lobbyState.role == "Player"){
-      return (
-        <table>
-          <tbody>
-            <tr>
-              <td>Name</td>
-              <td>{lobbyState.name}</td>
-            </tr>
-            <tr>
-              <td>Role</td>
-              <td>{lobbyState.role}</td>
-            </tr>
-            <tr>
-              <td>Status</td>
-              <td>{displayStatus()}</td>
-            </tr>
-          </tbody>
-        </table>)
-    } else {
-      return (
-        <table>
-          <tbody>
-            <tr>
-              <td>Name</td>
-              <td>{lobbyState.name}</td>
-            </tr>
-            <tr>
-              <td>Role</td>
-              <td>{lobbyState.role}</td>
-            </tr>
-          </tbody>
-        </table>
-      );
-    }
-  }
-
-  function addPlayer(player_name){
-    setLobbyState({joined: true, ready: false, name: player_name, role: "Player", players: lobbyState.players, observers: lobbyState.observers})
-  }
 
   function setReady(){
     console.log("Made ready")
-    setLobbyState({joined:true, ready: true, name: lobbyState.name, role: lobbyState.role, players: lobbyState.players, observers: lobbyState.observers})
+    ch_push("ready", "")
   }
+
+    const [currentName, setCurrentName] = useState({game: "", name: ""})
+
+  function updateName(ev) {
+    let name = ev.target.value;
+    setCurrentName({name: name, game: currentName.game});
+  }
+
+  function updateGame(ev) {
+    let game = ev.target.value;
+    setCurrentName({name:currentName.name, game: game})
+  }
+
+  function keyPress(ev) {
+    if (ev.key === "Enter") {
+      addPlayer()
+    }
+  }
+
+  function addPlayer(){
+    ch_start(currentName.game, {player: currentName.name})
+    setCurrentName({ game: "", name: "" });
+  }
+
 
   let header = (<h2>Error</h2>)
 
-  if (lobbyState.joined && !lobbyState.ready){
-    header = (<LobbyReady setReady={setReady}/>);
-  } else if (lobbyState.ready){
-    header = (<h2>Waiting for other players to join!</h2>);
+  let lobbyJoin = (    <div className="row">
+      <div className="column column-100">
+        <h4>Enter Your Game Name:</h4>
+      </div>
+      <div className="column column-60">
+        <input
+          type="text"
+          value={currentName.game}
+          onChange={updateGame}
+          onKeyPress={keyPress}
+        />
+      </div>
+      <div className="column column-100">
+        <h4>Enter Your User Name:</h4>
+      </div>
+      <div className="column column-60">
+        <input
+          type="text"
+          value={currentName.name}
+          onChange={updateName}
+          onKeyPress={keyPress}
+        />
+      </div>
+      <div className="column">
+        <button onClick={addPlayer}>Guess</button>
+      </div>
+    </div>)
+
+  if (currentName in gameState.participants) {
+    if (gameState.participants[currentName] == "pending_player"){
+      header = <LobbyReady setReady={setReady} />;
+    } else {
+      header = <h2>Waiting for other players to join!</h2>
+    }
   } else {
-    header = (<LobbyJoin join={addPlayer} />);
+    header = lobbyJoin;
   }
 
-  let self = displaySelf();
 
 
-  return (
-    <div>
-      {header}
-      {self}
-      <h2>Players</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lobbyState.observers.map((observer) => (
-            <tr key={observer}>
-              <td>{observer}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lobbyState.players.map((player) =>
-            displayPlayer(player[0], player[1])
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
+  // return (
+  //   <div>
+  //     {header}
+  //     <h2>Players</h2>
+  //     <table>
+  //       <thead>
+  //         <tr>
+  //           <th>Name</th>
+  //         </tr>
+  //       </thead>
+  //       <tbody>
+  //         {lobbyState.observers.map((observer) => (
+  //           <tr key={observer}>
+  //             <td>{observer}</td>
+  //           </tr>
+  //         ))}
+  //       </tbody>
+  //     </table>
+  //     <table>
+  //       <thead>
+  //         <tr>
+  //           <th>Name</th>
+  //           <th>Status</th>
+  //         </tr>
+  //       </thead>
+  //       <tbody>
+  //         {lobbyState.players.map((player) =>
+  //           displayPlayer(player[0], player[1])
+  //         )}
+  //       </tbody>
+  //     </table>
+  //   </div>
+  // );
+
+  return (<div>{header}</div>)
 }
 
 function ActiveGame({ reset, gameState, setGameState }) {
@@ -316,21 +314,23 @@ function GameWon({ reset }) {
 
 function Bulls() {
   const [gameState, setGameState] = useState({
-    guesses: [],
-    won: false,
-    lost: false,
-    startGame: false,
-    error: "",
-  });
+      guesses: [],
+      participants: [],
+      lobby: true,
+      won: false,
+      lost: false,
+      error: "",
+    });
 
   useEffect(() => ch_join(setGameState));
 
   function startGame() {
     setGameState({
       guesses: [],
+      participants: [],
+      lobby: true,
       won: false,
       lost: false,
-      startGame: true,
       error: "",
     });
   }
@@ -344,7 +344,7 @@ function Bulls() {
   } else if (gameState.won) {
     return <GameWon reset={reset} />;
   } else if (!gameState.startGame) {
-    return <Lobby startGame={startGame}/>;
+    return <Lobby startGame={startGame} gameState={gameState}/>;
   } else {
     return (
       <ActiveGame

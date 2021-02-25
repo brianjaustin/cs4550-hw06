@@ -23,9 +23,8 @@ defmodule BullsWeb.GameChannel do
   end
 
   defp do_join(name, {pname, _} = participant, socket) do
-    name
-    |> Bulls.GameServer.start()
-    |> Bulls.GameServer.join(participant)
+    Bulls.GameServer.start(name)
+    Bulls.GameServer.join(name, participant)
     socket = socket
     |> assign(:name, name)
     |> assign(:participant, pname)
