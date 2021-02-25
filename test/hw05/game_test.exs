@@ -67,6 +67,15 @@ defmodule Bulls.GameTest do
     assert Map.get(result.guesses, "foo") == [{"1234", 2}, {"4567", 1}]
   end
 
+  test "guess can pass with sentinel value" do
+    result = Bulls.Game.new(&Function.identity/1)
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.guess("foo", "----")
+    assert Enum.count(result.guesses) == 1
+    assert Map.get(result.guesses, "foo") == [{"----", 1}]
+  end
+
   test "guess does not overwrite if guessed in round" do
     result = Bulls.Game.new(&Function.identity/1)
     result = %{result | secret: "1111"}
