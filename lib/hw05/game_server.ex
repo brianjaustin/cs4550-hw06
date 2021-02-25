@@ -66,9 +66,9 @@ defmodule Bulls.GameServer do
     - name: name of the game to view
     - participant: name of the participant who is viewing the game
   """
-  @spec view(String.t()) :: term
-  def view(name) do
-    GenServer.call(reg(name), {:view, name})
+  @spec view(String.t(), String.t()) :: term
+  def view(name, participant) do
+    GenServer.call(reg(name), {:view, name, participant})
   end
 
   @doc """
@@ -106,8 +106,8 @@ defmodule Bulls.GameServer do
     {:reply, game, game}
   end
 
-  def handle_call({:view, _name}, _from, game) do
-    view = Bulls.Game.view(game)
+  def handle_call({:view, _name, participant}, _from, game) do
+    view = Bulls.Game.view(game, participant)
     {:reply, view, view}
   end
 

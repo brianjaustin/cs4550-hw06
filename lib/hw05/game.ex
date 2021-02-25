@@ -38,12 +38,13 @@ defmodule Bulls.Game do
     b: non_neg_integer
   }
 
+  @typedoc "Represents the state as viewable by participants"
   @type game_view :: %{
     guesses: %{String.t() => guess_view},
     participants: %{String.t() => :player | :observer},
     winners: [String.t()],
     lobby: boolean,
-    errors: [String.t()]
+    error: String.t()
   }
 
   @doc """
@@ -223,9 +224,10 @@ defmodule Bulls.Game do
 
   ## Parameters
     - st: game state
+    - participant: name of the participant who is viewing the state
   """
-  @spec view(game_state) :: game_view
-  def view(st) do
+  @spec view(game_state, String.t()) :: game_view
+  def view(st, participant) do
     guess_views = st.guesses
     |> Enum.map(&view_guesses(&1, st.secret))
     |> Enum.into(%{})
@@ -234,12 +236,14 @@ defmodule Bulls.Game do
       lobby: st.phase == :setup,
       participants: st.participants,
       winners: get_winners(st),
-      errors: Map.get(st, :error, "")
+      error: Map.get(st.errors, participant, "")
     }
   end
 
   defp view_guesses({player, guesses}, secret) do
-    guesses = Enum.map(guesses, &view_guess(&1, secret))
+    guesses = guesses
+    |> Enum.map(&view_guess(&1, secret))
+    |> Enum.reverse()
     {player, guesses}
   end
 
