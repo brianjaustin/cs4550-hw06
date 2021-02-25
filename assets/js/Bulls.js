@@ -88,7 +88,7 @@ function LobbyReady({setReady}){
 
 }
 
-function Lobby({ startGame, gameState }) {
+function Lobby({ gameState }) {
 
   function displayPlayer(name, status){
     return (
@@ -125,7 +125,6 @@ function Lobby({ startGame, gameState }) {
 
   function addPlayer(){
     ch_start(currentName.game, {player: currentName.name})
-    setCurrentName({ game: "", name: "" });
   }
 
 
@@ -159,8 +158,8 @@ function Lobby({ startGame, gameState }) {
       </div>
     </div>)
 
-  if (currentName in gameState.participants) {
-    if (gameState.participants[currentName] == "pending_player"){
+  if (currentName.name in gameState.participants) {
+    if (gameState.participants[currentName.name] == "pending_player"){
       header = <LobbyReady setReady={setReady} />;
     } else {
       header = <h2>Waiting for other players to join!</h2>
@@ -171,41 +170,31 @@ function Lobby({ startGame, gameState }) {
 
 
 
-  // return (
-  //   <div>
-  //     {header}
-  //     <h2>Players</h2>
-  //     <table>
-  //       <thead>
-  //         <tr>
-  //           <th>Name</th>
-  //         </tr>
-  //       </thead>
-  //       <tbody>
-  //         {lobbyState.observers.map((observer) => (
-  //           <tr key={observer}>
-  //             <td>{observer}</td>
-  //           </tr>
-  //         ))}
-  //       </tbody>
-  //     </table>
-  //     <table>
-  //       <thead>
-  //         <tr>
-  //           <th>Name</th>
-  //           <th>Status</th>
-  //         </tr>
-  //       </thead>
-  //       <tbody>
-  //         {lobbyState.players.map((player) =>
-  //           displayPlayer(player[0], player[1])
-  //         )}
-  //       </tbody>
-  //     </table>
-  //   </div>
-  // );
+  return (
+    <div>
+      {header}
+      <h2>Players</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(gameState.participants).map((player) =>
+            displayPlayer(player[0], player[1])
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 
-  return (<div>{header}</div>)
+  return (
+  <div>
+    {header}
+    <p>{JSON.stringify(gameState)}</p>
+  </div>)
 }
 
 function ActiveGame({ reset, gameState, setGameState }) {
@@ -344,7 +333,7 @@ function Bulls() {
   } else if (gameState.won) {
     return <GameWon reset={reset} />;
   } else if (!gameState.startGame) {
-    return <Lobby startGame={startGame} gameState={gameState}/>;
+    return <Lobby gameState={gameState}/>;
   } else {
     return (
       <ActiveGame

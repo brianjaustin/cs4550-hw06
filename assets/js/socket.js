@@ -18,13 +18,15 @@ let callback = null;
 
 function state_update(st) {
   gameState = st;
+  console.log(st.participants)
   if (callback) {
+    console.log("Setting new state")
     callback(st);
   }
 }
 
 export function ch_start(game_name, role) {
-  let channel = socket.channel(`game:${game_name}`, role);
+  channel = socket.channel(`game:${game_name}`, role);
   channel
     .join()
     .receive("ok", state_update)
