@@ -24,11 +24,12 @@ defmodule Bulls.Game do
 
   @typedoc "Represents internal game state"
   @type game_state :: %{
-    phase: :setup | :guess | :result,
+    round: non_neg_integer | :result,
     participants: %{String.t() => :pending_player | :player | :observer},
     secret: String.t(),
-    guesses: %{String.t() => [game_guess]},
-    errors: %{String.t() => String.t()}
+    guesses: %{String.t() => [String.t()]},
+    errors: %{String.t() => String.t()},
+    sched: (non_neg_integer -> term)
   }
 
   @typedoc "Represents a user visible guess result"
@@ -38,26 +39,32 @@ defmodule Bulls.Game do
     b: non_neg_integer
   }
 
+  @typedoc "Represents the state as viewable by participants"
   @type game_view :: %{
     guesses: %{String.t() => guess_view},
     participants: %{String.t() => :player | :observer},
     winners: [String.t()],
     lobby: boolean,
-    errors: [String.t()]
+    error: String.t()
   }
 
   @doc """
   Produces a blank game state, with empty guesses and a randomly
   generated secret.
+
+  ## Arguments
+
+    - sched_callback: callback function used for round maintenance
   """
-  @spec new() :: game_state
-  def new() do
+  @spec new((non_neg_integer -> term)) :: game_state
+  def new(sched_callback) do
     %{
-      phase: :setup,
+      round: 0,
       participants: %{},
       secret: gen_secret(),
       guesses: %{},
-      errors: %{}
+      errors: %{},
+      sched: sched_callback,
     }
   end
 
@@ -72,7 +79,7 @@ defmodule Bulls.Game do
   end
 
   @doc """
-  Adds a participant to the given game. If the game is in its setup phase,
+  Adds a participant to the given game. If the game is in its setup round,
   participants may be added as either players (allowed to place guesses)
   or observers (not allowed to guess). For all other states, the requested
   participant will be ignored and the participant will be added as an observer.
@@ -84,30 +91,36 @@ defmodule Bulls.Game do
 
   ## Examples
 
-    iex> Bulls.Game.add_player(%{phase: :setup, participants: %{}}, {"foo", :player})
-    %{participants: %{"foo" => :pending_player}, phase: :setup}
+    iex> Bulls.Game.add_player(%{round: 0, participants: %{}}, {"foo", :player})
+    %{participants: %{"foo" => :pending_player}, round: 0}
 
-    iex> Bulls.Game.add_player(%{phase: :setup, participants: %{"foo" => :player}}, {"bar", :observer})
-    %{participants: %{"foo" => :player, "bar" => :observer}, phase: :setup}
+    iex> Bulls.Game.add_player(%{round: 0, participants: %{"foo" => :player}}, {"bar", :observer})
+    %{participants: %{"foo" => :player, "bar" => :observer}, round: 0}
 
-    iex> Bulls.Game.add_player(%{phase: :play, participants: %{}}, {"foo", :player})
-    %{participants: %{"foo" => :observer}, phase: :play}
+    iex> Bulls.Game.add_player(%{round: 1, participants: %{}}, {"foo", :player})
+    %{participants: %{"foo" => :observer}, round: 1}
   """
   @spec add_player(game_state, game_participant) :: game_state
   def add_player(st, {pname, :player}) do
-    ps = Map.get(st, :participants)
-
-    if  Map.get(st, :phase) != :setup do
-      %{st | participants: Map.put(ps, pname, :observer)}
-    else
-      %{st | participants: Map.put(ps, pname, :pending_player)}
+    cond do
+      registered?(st, pname) ->
+        st
+      st.round > 0 ->
+        %{st | participants: Map.put(st.participants, pname, :observer)}
+      true ->
+        %{st | participants: Map.put(st.participants, pname, :pending_player)}
     end
   end
 
   def add_player(st, {pname, :observer}) do
-    ps = Map.get(st, :participants)
-    %{st | participants: Map.put(ps, pname, :observer)}
+    if registered?(st, pname) do
+      st
+    else
+      %{st | participants: Map.put(st.participants, pname, :observer)}
+    end
   end
+
+  defp registered?(st, name), do: name in Map.keys(st.participants)
 
   @doc """
   Marks a player as ready to play. Observers remain observers
@@ -120,25 +133,28 @@ defmodule Bulls.Game do
 
   ## Examples
 
-    iex> Bulls.Game.ready_player(%{participants: %{"baz" => :player}, phase: :setup}, "foo")
-    %{participants: %{"baz" => :player}, phase: :setup}
+    iex> Bulls.Game.ready_player(%{participants: %{"baz" => :player}, guesses: %{}, round: 0, sched: &Function.identity/1}, "foo")
+    %{participants: %{"baz" => :player}, guesses: %{}, round: 0, sched: &Function.identity/1}
 
-    iex> Bulls.Game.ready_player(%{participants: %{"foo" => :pending_player}, phase: :setup}, "foo")
-    %{participants: %{"foo" => :player}, phase: :guess}
+    iex> Bulls.Game.ready_player(%{participants: %{"foo" => :pending_player}, guesses: %{}, round: 0, sched: &Function.identity/1}, "foo")
+    %{participants: %{"foo" => :player}, guesses: %{"foo" => []}, round: 1, sched: &Function.identity/1}
 
-    iex> Bulls.Game.ready_player(%{participants: %{"bar" => :observer}, phase: :setup}, "bar")
-    %{participants: %{"bar" => :observer}, phase: :setup}
+    iex> Bulls.Game.ready_player(%{participants: %{"bar" => :observer}, guesses: %{}, round: 0, sched: &Function.identity/1}, "bar")
+    %{participants: %{"bar" => :observer}, guesses: %{}, round: 0, sched: &Function.identity/1}
   """
   @spec ready_player(game_state, String.t()) :: game_state
   def ready_player(st, pname) do
-    ps = Map.get(st, :participants)
+    if Map.get(st.participants, pname) == :pending_player do
+      result = %{
+        st |
+        participants: Map.put(st.participants, pname, :player),
+        guesses: Map.put(st.guesses, pname, [])
+      }
 
-    if Map.get(ps, pname) == :pending_player do
-      result = %{st | participants: Map.put(ps, pname, :player)}
-
-      if Enum.all?(Map.get(result, :participants),fn {_, type} -> type != :pending_player end)
+      if Enum.all?(result.participants, fn {_, type} -> type != :pending_player end)
       do
-        %{result | phase: :guess}
+        st.sched.(1)
+        %{result | round: 1}
       else
         result
       end
@@ -159,61 +175,95 @@ defmodule Bulls.Game do
   """
   @spec guess(game_state, String.t(), String.t()) :: game_state
   def guess(st, player, num) do
-    # Pull out some important state keys here,
-    # because pattern matching for maps inevitably
-    # leads to disappointment.
-    es = Map.get(st, :errors)
-    ps = Map.get(st, :participants)
-
     num_digits = String.graphemes(num)
     cond do
-      Map.get(st, :phase) == :setup ->
-        %{st | errors: Map.put(es, player, "Game not yet started.")}
-      Map.get(st, :phase) == :result ->
-        %{st | errors: Map.put(es, player, "Game already concluded. Please start a new game.")}
-      Map.get(ps, player, :observer) != :player ->
-        %{st | errors: Map.put(es, player, "Only ready players may place guesses.")}
+      st.round == 0 ->
+        %{st | errors: Map.put(st.errors, player, "Game not yet started.")}
+      st.round == :result ->
+        %{st | errors: Map.put(st.errors, player, "Game already concluded. Please start a new game.")}
+      Map.get(st.participants, player, :observer) != :player ->
+        %{st | errors: Map.put(st.errors, player, "Only ready players may place guesses.")}
       Enum.dedup(num_digits) != num_digits ->
-        %{st | errors: Map.put(es, player, "Guess may not contain duplicate digits.")}
+        %{st | errors: Map.put(st.errors, player, "Guess may not contain duplicate digits.")}
       Regex.match?(~r/^[1-9]\d{3}$/, num) ->
-        do_guess(%{st | errors: Map.put(es, player, "")}, player, num)
+        do_guess(%{st | errors: Map.put(st.errors, player, "")}, player, num)
       true ->
         %{st | errors: Map.put(
-          es, player, "Invalid guess '#{num}'. Must be a four-digit number with unique digits"
+          st.errors, player, "Invalid guess '#{num}'. Must be a four-digit number with unique digits"
         )}
     end
   end
 
   defp do_guess(st, player, num) do
-    gs = Map.get(st, :guesses)
-    player_guesses = Map.get(gs, player, [])
-    player_guesses = Enum.dedup([num | player_guesses])
+    player_guesses = Map.get(st.guesses, player, [])
+    cond do
+      dup_guess?(player_guesses, num) ->
+        st
+      guessed_already?(st, player_guesses) ->
+        st
+      true ->
+        player_guesses = [{num, st.round} | player_guesses]
+        result = %{st | guesses: Map.put(st.guesses, player, player_guesses)}
+        if all_guessed?(result) do
+          finish_round(result, 1)
+        else
+          result
+        end
+    end
+  end
 
-    %{st | guesses: Map.put(gs, player, player_guesses)}
+  defp dup_guess?(guesses, num) do
+    Enum.any?(guesses, fn {guess, _} -> guess == num end)
+  end
+
+  defp guessed_already?(_, []), do: false
+  defp guessed_already?(st, [{_, round} | _]), do: st.round == round
+
+  defp all_guessed?(st) do
+    guesses_this_round = st.guesses
+    |> Enum.flat_map(fn {_, gs} -> gs end)
+    |> Enum.filter(fn {_, r} -> st.round == r end)
+    |> Enum.count()
+
+    players = st.participants
+    |> Enum.filter(fn {_, role} -> role == :player end)
+    |> Enum.count()
+
+    guesses_this_round == players
   end
 
   @doc """
   Does book keeping at the end of a game play round,
   including setting the state if a correct guess has been made.
+  If the active round is not the one expected, ignore the request.
 
   ## Arguments
 
     - st: game state
-
-  ## Examples
-
-    iex> Bulls.Game.finish_round(%{secret: "1234", guesses: %{}, phase: :guess})
-    %{secret: "1234", guesses: %{}, phase: :guess}
-
-    iex> Bulls.Game.finish_round(%{secret: "1234", guesses: %{"foo" => ["1234"]}, phase: :guess})
-    %{secret: "1234", guesses: %{"foo" => ["1234"]}, phase: :result}
+    - round: the round to target
   """
-  @spec finish_round(game_state) :: game_state
-  def finish_round(st) do
-    if Enum.empty?(get_winners(st)) do
-      st
+  @spec finish_round(game_state, non_neg_integer) :: game_state
+  def finish_round(st, round) do
+    cond do
+      st.round != round ->
+        st
+      Enum.empty?(get_winners(st)) ->
+        new_round = st.round + 1
+        guesses = st.guesses
+        |> Enum.map(fn {player, guesses} -> {player, pass_player(st, guesses)} end)
+        |> Enum.into(%{})
+        st.sched.(new_round)
+        %{st | guesses: guesses, round: new_round}
+      true ->
+        %{st | round: :result}
+    end
+  end
+
+  defp pass_player(st, guesses) do
+    if not guessed_already?(st, guesses) do
+      [{"----", st.round} | guesses]
     else
-      %{st | phase: :result}
+      guesses
     end
   end
 
@@ -223,27 +273,31 @@ defmodule Bulls.Game do
 
   ## Parameters
     - st: game state
+    - participant: name of the participant who is viewing the state
   """
-  @spec view(game_state) :: game_view
-  def view(st) do
+  @spec view(game_state, String.t()) :: game_view
+  def view(st, participant) do
     guess_views = st.guesses
-    |> Enum.map(&view_guesses(&1, st.secret))
+    |> Enum.map(&view_guesses(&1, st))
     |> Enum.into(%{})
     %{
       guesses: guess_views,
-      lobby: st.phase == :setup,
+      lobby: st.round == 0,
       participants: st.participants,
       winners: get_winners(st),
-      errors: Map.get(st, :error, "")
+      error: Map.get(st.errors, participant, "")
     }
   end
 
-  defp view_guesses({player, guesses}, secret) do
-    guesses = Enum.map(guesses, &view_guess(&1, secret))
+  defp view_guesses({player, guesses}, st) do
+    guesses = guesses
+    |> Enum.drop_while(fn {_, round} -> round == st.round end)
+    |> Enum.map(&view_guess(&1, st.secret))
+    |> Enum.reverse()
     {player, guesses}
   end
 
-  defp view_guess(guess, secret) do
+  defp view_guess({guess, _}, secret) do
     secret_list = String.graphemes(secret)
     guess_list = String.graphemes(guess)
     
@@ -260,7 +314,8 @@ defmodule Bulls.Game do
 
   defp get_winners(st) do
     Enum.reduce(st.guesses, [], fn({player, guesses}, acc) ->
-      if st.secret in guesses, do: [player | acc], else: acc
+      pguesses = Enum.map(guesses, fn {guess, _} -> guess end)
+      if st.secret in pguesses, do: [player | acc], else: acc
     end)
   end
 
