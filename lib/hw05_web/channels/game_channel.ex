@@ -29,9 +29,18 @@ defmodule BullsWeb.GameChannel do
     |> assign(:name, name)
     |> assign(:participant, pname)
 
-    view = Bulls.GameServer.view(name, pname)
-    broadcast(socket, "view", view)
+    view = Bulls.GameServer.view(name)
+    send(self(), :player_join)
     {:ok, view, socket}
+  end
+
+  @impl true
+  def handle_info(:player_join, socket) do
+    name = socket.assigns[:name]
+    view = Bulls.GameServer.view(name)
+
+    broadcast(socket, "view", view)
+    {:noreply, socket}
   end
 
   @impl true
