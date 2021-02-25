@@ -45,7 +45,7 @@ defmodule Bulls.Game do
     participants: %{String.t() => :player | :observer},
     winners: [String.t()],
     lobby: boolean,
-    error: String.t()
+    errors: String.t()
   }
 
   @doc """
@@ -183,6 +183,8 @@ defmodule Bulls.Game do
         %{st | errors: Map.put(st.errors, player, "Game already concluded. Please start a new game.")}
       Map.get(st.participants, player, :observer) != :player ->
         %{st | errors: Map.put(st.errors, player, "Only ready players may place guesses.")}
+      num == "----" ->
+        do_pass(%{st | errors: Map.put(st.errors, player, "")}, player)
       Enum.dedup(num_digits) != num_digits ->
         %{st | errors: Map.put(st.errors, player, "Guess may not contain duplicate digits.")}
       Regex.match?(~r/^[1-9]\d{3}$/, num) ->
@@ -205,10 +207,22 @@ defmodule Bulls.Game do
         player_guesses = [{num, st.round} | player_guesses]
         result = %{st | guesses: Map.put(st.guesses, player, player_guesses)}
         if all_guessed?(result) do
-          finish_round(result, 1)
+          finish_round(result, st.round)
         else
           result
         end
+    end
+  end
+
+  defp do_pass(st, player) do
+    player_guesses = Map.get(st.guesses, player, [])
+    player_guesses = [{"----", st.round} | player_guesses]
+    result = %{ st | guesses: Map.put(st.guesses, player, player_guesses)}
+
+    if all_guessed?(result) do
+      finish_round(result, st.round)
+    else
+      result
     end
   end
 
@@ -273,10 +287,9 @@ defmodule Bulls.Game do
 
   ## Parameters
     - st: game state
-    - participant: name of the participant who is viewing the state
   """
-  @spec view(game_state, String.t()) :: game_view
-  def view(st, participant) do
+  @spec view(game_state) :: game_view
+  def view(st) do
     guess_views = st.guesses
     |> Enum.map(&view_guesses(&1, st))
     |> Enum.into(%{})
@@ -285,7 +298,7 @@ defmodule Bulls.Game do
       lobby: st.round == 0,
       participants: st.participants,
       winners: get_winners(st),
-      error: Map.get(st.errors, participant, "")
+      errors: st.errors
     }
   end
 

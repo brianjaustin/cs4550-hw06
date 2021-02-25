@@ -24,12 +24,12 @@ defmodule Bulls.GameServer do
   end
 
   def start_link(name) do
-    game = Bulls.BackupAgent.get(name) || Bulls.Game.new(&sched_round/1)
+    game = Bulls.BackupAgent.get(name) || Bulls.Game.new(&sched_round(name, &1))
     GenServer.start_link(__MODULE__, game, name: reg(name))
   end
 
-  defp sched_round(round) do
-    Process.send_after(self(), {:maintain_round, round}, 30_000)
+  defp sched_round(name, round) do
+    Process.send_after(self(), {:maintain_round, name, round}, 30_000)
   end
 
   @doc """
@@ -68,11 +68,10 @@ defmodule Bulls.GameServer do
   ## Arguments
 
     - name: name of the game to view
-    - participant: name of the participant who is viewing the game
   """
-  @spec view(String.t(), String.t()) :: term
-  def view(name, participant) do
-    GenServer.call(reg(name), {:view, name, participant})
+  @spec view(String.t()) :: term
+  def view(name) do
+    GenServer.call(reg(name), {:view, name})
   end
 
   @doc """
@@ -110,8 +109,8 @@ defmodule Bulls.GameServer do
     {:reply, game, game}
   end
 
-  def handle_call({:view, _name, participant}, _from, game) do
-    view = Bulls.Game.view(game, participant)
+  def handle_call({:view, _name}, _from, game) do
+    view = Bulls.Game.view(game)
     {:reply, view, game}
   end
 
@@ -121,8 +120,10 @@ defmodule Bulls.GameServer do
     {:reply, game, game}
   end
 
-  def handle_info({:maintain_round, round}, game) do
+  def handle_info({:maintain_round, name, round}, game) do
     game = Bulls.Game.finish_round(game, round)
+    view = Bulls.Game.view(game)
+    BullsWeb.Endpoint.broadcast("game:" <> name, "view", view)
     {:noreply, game}
   end
 

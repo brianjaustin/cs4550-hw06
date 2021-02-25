@@ -67,6 +67,15 @@ defmodule Bulls.GameTest do
     assert Map.get(result.guesses, "foo") == [{"1234", 2}, {"4567", 1}]
   end
 
+  test "guess can pass with sentinel value" do
+    result = Bulls.Game.new(&Function.identity/1)
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.guess("foo", "----")
+    assert Enum.count(result.guesses) == 1
+    assert Map.get(result.guesses, "foo") == [{"----", 1}]
+  end
+
   test "guess does not overwrite if guessed in round" do
     result = Bulls.Game.new(&Function.identity/1)
     result = %{result | secret: "1111"}
@@ -193,7 +202,7 @@ defmodule Bulls.GameTest do
   test "view sets lobby and winners for setup phase" do
     result = Bulls.Game.new(&Function.identity/1)
     |> Bulls.Game.add_player({"bar", :observer})
-    |> Bulls.Game.view("bar")
+    |> Bulls.Game.view()
 
     assert result.lobby
     assert result.winners == []
@@ -203,7 +212,7 @@ defmodule Bulls.GameTest do
     result = Bulls.Game.new(&Function.identity/1)
     |> Bulls.Game.add_player({"bar", :player})
     |> Bulls.Game.ready_player("bar")
-    |> Bulls.Game.view("bar")
+    |> Bulls.Game.view()
 
     refute result.lobby
     assert result.winners == []
@@ -218,7 +227,7 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.ready_player("bar")
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.guess("bar", "1234")
-    |> Bulls.Game.view("foo")
+    |> Bulls.Game.view()
 
     refute result.lobby
     assert result.winners == ["foo", "bar"]
@@ -234,7 +243,7 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.guess("bar", "5432")
     |> Bulls.Game.finish_round(1)
-    |> Bulls.Game.view("foo")
+    |> Bulls.Game.view()
 
     assert result.guesses == %{
       "bar" => [%{guess: "5432", a: 0, b: 3}],
@@ -250,7 +259,7 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.ready_player("bar")
     |> Bulls.Game.ready_player("foo")
     |> Bulls.Game.guess("foo", "1234")
-    |> Bulls.Game.view("foo")
+    |> Bulls.Game.view()
 
     assert result.guesses == %{
       "bar" => [],
