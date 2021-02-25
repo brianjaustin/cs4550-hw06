@@ -29,18 +29,26 @@ defmodule BullsWeb.GameChannel do
     |> assign(:name, name)
     |> assign(:participant, pname)
 
-    view = Bulls.GameServer.view(name, pname)
-    broadcast(socket, "view", view)
+    view = Bulls.GameServer.view(name)
+    send(self(), :player_join)
     {:ok, view, socket}
+  end
+
+  @impl true
+  def handle_info(:player_join, socket) do
+    name = socket.assigns[:name]
+    view = Bulls.GameServer.view(name)
+
+    broadcast(socket, "view", view)
+    {:noreply, socket}
   end
 
   @impl true
   def handle_in("ready", _payload, socket) do
     name = socket.assigns[:name]
     participant = socket.assigns[:participant]
-    view = name
-    |> Bulls.GameServer.ready(participant)
-    |> Bulls.GameServer.view(participant)
+    Bulls.GameServer.ready(name, participant)
+    view = Bulls.GameServer.view(name)
 
     broadcast(socket, "view", view)
     {:reply, {:ok, view}, socket}
@@ -48,10 +56,10 @@ defmodule BullsWeb.GameChannel do
 
   @impl true
   def handle_in("guess", %{"number" => n}, socket) do
+    name = socket.assigns[:name]
     participant = socket.assigns[:participant]
-    view = socket.assigns[:name]
-    |> Bulls.GameServer.guess(participant, n)
-    |> Bulls.GameServer.view(participant)
+    Bulls.GameServer.guess(name, participant, n)
+    view = Bulls.GameServer.view(name)
 
     {:reply, {:ok, view}, socket}
   end
