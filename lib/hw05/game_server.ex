@@ -24,12 +24,12 @@ defmodule Bulls.GameServer do
   end
 
   def start_link(name) do
-    game = Bulls.BackupAgent.get(name) || Bulls.Game.new(&sched_round/1)
+    game = Bulls.BackupAgent.get(name) || Bulls.Game.new(&sched_round(name, &1))
     GenServer.start_link(__MODULE__, game, name: reg(name))
   end
 
-  defp sched_round(round) do
-    Process.send_after(self(), {:maintain_round, round}, 30_000)
+  defp sched_round(name, round) do
+    Process.send_after(self(), {:maintain_round, name, round}, 30_000)
   end
 
   @doc """
@@ -120,8 +120,10 @@ defmodule Bulls.GameServer do
     {:reply, game, game}
   end
 
-  def handle_info({:maintain_round, round}, game) do
+  def handle_info({:maintain_round, name, round}, game) do
     game = Bulls.Game.finish_round(game, round)
+    view = Bulls.Game.view(game)
+    BullsWeb.Endpoint.broadcast("game:" <> name, "view", view)
     {:noreply, game}
   end
 
