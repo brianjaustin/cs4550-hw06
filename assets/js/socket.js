@@ -31,6 +31,7 @@ export function ch_start(game_name, role) {
     .join()
     .receive("ok", state_update)
     .receive("error", (resp) => console.log("Unable to join", resp));
+  channel.on("view", state_update);
 }
 
 export function ch_join(cb) {
@@ -44,5 +45,3 @@ export function ch_push(type, msg) {
     .receive("ok", state_update)
     .receive("error", resp => console.log("Unable to push", resp));
 }
-
-
