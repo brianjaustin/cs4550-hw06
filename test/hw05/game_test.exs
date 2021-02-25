@@ -193,7 +193,7 @@ defmodule Bulls.GameTest do
   test "view sets lobby and winners for setup phase" do
     result = Bulls.Game.new(&Function.identity/1)
     |> Bulls.Game.add_player({"bar", :observer})
-    |> Bulls.Game.view()
+    |> Bulls.Game.view("bar")
 
     assert result.lobby
     assert result.winners == []
@@ -203,7 +203,7 @@ defmodule Bulls.GameTest do
     result = Bulls.Game.new(&Function.identity/1)
     |> Bulls.Game.add_player({"bar", :player})
     |> Bulls.Game.ready_player("bar")
-    |> Bulls.Game.view()
+    |> Bulls.Game.view("bar")
 
     refute result.lobby
     assert result.winners == []
@@ -218,7 +218,7 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.ready_player("bar")
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.guess("bar", "1234")
-    |> Bulls.Game.view()
+    |> Bulls.Game.view("foo")
 
     refute result.lobby
     assert result.winners == ["foo", "bar"]
@@ -234,7 +234,7 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.guess("foo", "1234")
     |> Bulls.Game.guess("bar", "5432")
     |> Bulls.Game.finish_round(1)
-    |> Bulls.Game.view()
+    |> Bulls.Game.view("foo")
 
     assert result.guesses == %{
       "bar" => [%{guess: "5432", a: 0, b: 3}],
@@ -250,7 +250,7 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.ready_player("bar")
     |> Bulls.Game.ready_player("foo")
     |> Bulls.Game.guess("foo", "1234")
-    |> Bulls.Game.view()
+    |> Bulls.Game.view("foo")
 
     assert result.guesses == %{
       "bar" => [],
