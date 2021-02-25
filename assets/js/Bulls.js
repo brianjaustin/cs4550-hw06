@@ -34,8 +34,6 @@ function LobbyReady({ setReady }) {
 function Lobby({ gameState, addPlayer, addObserver, setGameState }) {
   const [currentName, setCurrentName] = useState({ game: "", name: "" });
 
-  useEffect(() => ch_join(setGameState));
-  
   function displayPlayer(name, status) {
     return (
       <tr key={name}>
@@ -103,8 +101,8 @@ function Lobby({ gameState, addPlayer, addObserver, setGameState }) {
             onKeyPress={keyPress}
           />
         </div>
-        </div>
-        <div className="row">
+      </div>
+      <div className="row">
         <div className="column">
           <button onClick={addPlayerToState}>Join as Player</button>
         </div>
@@ -167,60 +165,85 @@ function ActiveGame({ reset, gameState, setGameState }) {
     }
   }
 
-  function displayGuess(guess, index) {
+  function displayGuesses(player_info) {
+    let player_name = player_info[0];
+    let guesses = player_info[1];
+    return guesses.map((guess, index) =>
+      displayGuess(guess, player_name, index)
+    );
+  }
+
+  function displayGuess(guess, name, index) {
     return (
-      <tr key={index}>
-        <td>{index + 1}</td>
+      <tr key={String(guess.guess).concat(String(name).concat(index))}>
+        <td>{name}</td>
         <td>{guess.guess}</td>
         <td>{`${guess.a}A${guess.b}B`}</td>
       </tr>
     );
   }
 
-  // let guesses = (
-  //   <table>
-  //     <thead>
-  //       <tr>
-  //         <th>#</th>
-  //         <th>Guess</th>
-  //         <th>Result</th>
-  //       </tr>
-  //     </thead>
-  //     <tbody>
-  //       {gameState.guesses.map((guess, index) => displayGuess(guess, index))}
-  //     </tbody>
-  //   </table>
-  // );
+  let guesses = (
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Guess</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Object.entries(gameState.guesses).map((guesses) =>
+          displayGuesses(guesses)
+        )}
+      </tbody>
+    </table>
+  );
+
+  let input_guess = (
+    <div className="row">
+      <div className="column column-60">
+        <input
+          type="text"
+          value={currentGuess}
+          onChange={updateGuess}
+          onKeyPress={keyPress}
+        />
+      </div>
+      <div className="column">
+        <button onClick={guess}>Guess</button>
+      </div>
+    </div>
+  );
+
+  if (gameState.participants[gameState.player_name] != "player") {
+    console.log(gameState.player_name)
+    console.log(gameState.participants[gameState.player_name])
+    input_guess = (<p>Only Ready Players can guess</p>)
+  } else{
+    console.log("NOT PLAYER")
+    console.log(gameState.participants[gameState.player_name]);
+  }
+
 
   return (
     <div>
       <h1>Bulls</h1>
       <p>Guess a 4 digit number:</p>
       <ErrorMessage msg={gameState.error} />
-      <div className="row">
-        <div className="column column-60">
-          <input
-            type="text"
-            value={currentGuess}
-            onChange={updateGuess}
-            onKeyPress={keyPress}
-          />
-        </div>
-        <div className="column">
-          <button onClick={guess}>Guess</button>
-        </div>
-        <div className="column">
-          <button
-            className="button button-outline"
-            onClick={() => {
-              reset();
-              setCurrentGuess("");
-            }}
-          >
-            Reset Game
-          </button>
-        </div>
+      {input_guess}
+      <div className="column">
+        <button
+          className="button button-outline"
+          onClick={() => {
+            reset();
+            setCurrentGuess("");
+          }}
+        >
+          Reset Game
+        </button>
       </div>
+      {guesses}
       <p>{JSON.stringify(gameState)}</p>
     </div>
   );
@@ -252,16 +275,29 @@ function Bulls() {
     participants: [],
     lobby: true,
     error: "",
-    name: "",
+    player_name: "",
   });
 
-  useEffect(() => ch_join(setGameState));
+  function setGameStateWOName(st){
+    let new_state = Object.assign(st, {player_name: gameState.player_name})
+    setGameState(new_state)
+  }
+
+  function setName(name){
+    let new_state = gameState
+    new_state.player_name = name
+    setGameState(new_state)
+  }
+
+  useEffect(() => ch_join(setGameStateWOName));
 
   function addPlayer(game_name, player_name) {
+    setName(player_name)
     ch_start(game_name, { player: player_name });
   }
 
   function addObserver(game_name, player_name) {
+    setName(player_name)
     ch_start(game_name, { observer: player_name });
   }
 
