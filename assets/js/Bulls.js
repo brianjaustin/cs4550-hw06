@@ -23,152 +23,107 @@ function ErrorMessage({ msg }) {
   }
 }
 
-function LobbyJoin() {
-  const [currentName, setCurrentName] = useState({game: "", name: ""})
-
-  function updateName(ev) {
-    let name = ev.target.value;
-    setCurrentName({name: name, game: currentName.game});
-  }
-
-  function updateGame(ev) {
-    let game = ev.target.value;
-    setCurrentName({name:currentName.name, game: game})
-  }
-
-  function keyPress(ev) {
-    if (ev.key === "Enter") {
-      addPlayer()
-    }
-  }
-
-  function addPlayer(){
-    ch_start(currentName.game, {player: currentName.name})
-    setCurrentName({ game: "", name: "" });
-  }
-
-  return (
-    <div className="row">
-      <div className="column column-100">
-        <h4>Enter Your Game Name:</h4>
-      </div>
-      <div className="column column-60">
-        <input
-          type="text"
-          value={currentName.game}
-          onChange={updateGame}
-          onKeyPress={keyPress}
-        />
-      </div>
-      <div className="column column-100">
-        <h4>Enter Your User Name:</h4>
-      </div>
-      <div className="column column-60">
-        <input
-          type="text"
-          value={currentName.name}
-          onChange={updateName}
-          onKeyPress={keyPress}
-        />
-      </div>
-      <div className="column">
-        <button onClick={addPlayer}>Guess</button>
-      </div>
-    </div>
-  );
-}
-
-function LobbyReady({setReady}){
-
+function LobbyReady({ setReady }) {
   return (
     <div className="row">
       <button onClick={setReady}>Set Ready</button>
     </div>
   );
-
 }
 
-function Lobby({ gameState }) {
+function Lobby({ gameState, addPlayer, addObserver, setGameState }) {
+  const [currentName, setCurrentName] = useState({ game: "", name: "" });
 
-  function displayPlayer(name, status){
+  useEffect(() => ch_join(setGameState));
+  
+  function displayPlayer(name, status) {
     return (
       <tr key={name}>
         <td>{name}</td>
         <td>{status}</td>
       </tr>
-    )
+    );
   }
 
-
-  function setReady(){
-    console.log("Made ready")
-    ch_push("ready", "")
+  function setReady() {
+    console.log("Made ready");
+    ch_push("ready", "");
   }
-
-    const [currentName, setCurrentName] = useState({game: "", name: ""})
 
   function updateName(ev) {
     let name = ev.target.value;
-    setCurrentName({name: name, game: currentName.game});
+    setCurrentName({ name: name, game: currentName.game });
   }
 
   function updateGame(ev) {
     let game = ev.target.value;
-    setCurrentName({name:currentName.name, game: game})
+    setCurrentName({ name: currentName.name, game: game });
   }
 
   function keyPress(ev) {
     if (ev.key === "Enter") {
-      addPlayer()
+      addPlayer();
     }
   }
 
-  function addPlayer(){
-    ch_start(currentName.game, {player: currentName.name})
+  function addPlayerToState() {
+    addPlayer(currentName.game, currentName.name);
   }
 
+  function addObserverToState() {
+    addObserver(currentName.game, currentName.name);
+  }
 
-  let header = (<h2>Error</h2>)
+  let header = <h2>Error</h2>;
 
-  let lobbyJoin = (    <div className="row">
-      <div className="column column-100">
-        <h4>Enter Your Game Name:</h4>
+  let lobbyJoin = (
+    <div>
+      <div className="row">
+        <div className="column">
+          <h4>Enter Your Game Name:</h4>
+        </div>
+        <div className="column column-60">
+          <input
+            type="text"
+            value={currentName.game}
+            onChange={updateGame}
+            onKeyPress={keyPress}
+          />
+        </div>
       </div>
-      <div className="column column-60">
-        <input
-          type="text"
-          value={currentName.game}
-          onChange={updateGame}
-          onKeyPress={keyPress}
-        />
+      <div className="row">
+        <div className="column column-100">
+          <h4>Enter Your User Name:</h4>
+        </div>
+        <div className="column column-60">
+          <input
+            type="text"
+            value={currentName.name}
+            onChange={updateName}
+            onKeyPress={keyPress}
+          />
+        </div>
+        </div>
+        <div className="row">
+        <div className="column">
+          <button onClick={addPlayerToState}>Join as Player</button>
+        </div>
+        <div className="column">
+          <button onClick={addObserverToState}>Join As Observer</button>
+        </div>
       </div>
-      <div className="column column-100">
-        <h4>Enter Your User Name:</h4>
-      </div>
-      <div className="column column-60">
-        <input
-          type="text"
-          value={currentName.name}
-          onChange={updateName}
-          onKeyPress={keyPress}
-        />
-      </div>
-      <div className="column">
-        <button onClick={addPlayer}>Guess</button>
-      </div>
-    </div>)
+    </div>
+  );
 
   if (currentName.name in gameState.participants) {
-    if (gameState.participants[currentName.name] == "pending_player"){
+    if (gameState.participants[currentName.name] == "pending_player") {
       header = <LobbyReady setReady={setReady} />;
     } else {
-      header = <h2>Waiting for other players to join!</h2>
+      header = <h2>Waiting for other players to join!</h2>;
     }
   } else {
     header = lobbyJoin;
   }
-
-
 
   return (
     <div>
@@ -187,26 +142,13 @@ function Lobby({ gameState }) {
           )}
         </tbody>
       </table>
+      <p>{JSON.stringify(gameState)}</p>
     </div>
   );
-
-  return (
-  <div>
-    {header}
-    <p>{JSON.stringify(gameState)}</p>
-  </div>)
 }
 
 function ActiveGame({ reset, gameState, setGameState }) {
   const [currentGuess, setCurrentGuess] = useState("");
-
-  function setError(err) {
-    setGameState(
-      Object.assign({}, gameState, {
-        error: err,
-      })
-    );
-  }
 
   function guess() {
     ch_push("guess", { number: currentGuess });
@@ -234,6 +176,21 @@ function ActiveGame({ reset, gameState, setGameState }) {
       </tr>
     );
   }
+
+  // let guesses = (
+  //   <table>
+  //     <thead>
+  //       <tr>
+  //         <th>#</th>
+  //         <th>Guess</th>
+  //         <th>Result</th>
+  //       </tr>
+  //     </thead>
+  //     <tbody>
+  //       {gameState.guesses.map((guess, index) => displayGuess(guess, index))}
+  //     </tbody>
+  //   </table>
+  // );
 
   return (
     <div>
@@ -264,19 +221,7 @@ function ActiveGame({ reset, gameState, setGameState }) {
           </button>
         </div>
       </div>
-      <h2>Guesses:</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Guess</th>
-            <th>Result</th>
-          </tr>
-        </thead>
-        <tbody>
-          {gameState.guesses.map((guess, index) => displayGuess(guess, index))}
-        </tbody>
-      </table>
+      <p>{JSON.stringify(gameState)}</p>
     </div>
   );
 }
@@ -303,37 +248,42 @@ function GameWon({ reset }) {
 
 function Bulls() {
   const [gameState, setGameState] = useState({
-      guesses: [],
-      participants: [],
-      lobby: true,
-      won: false,
-      lost: false,
-      error: "",
-    });
+    guesses: [],
+    participants: [],
+    lobby: true,
+    error: "",
+    name: "",
+  });
 
   useEffect(() => ch_join(setGameState));
 
-  function startGame() {
-    setGameState({
-      guesses: [],
-      participants: [],
-      lobby: true,
-      won: false,
-      lost: false,
-      error: "",
-    });
+  function addPlayer(game_name, player_name) {
+    ch_start(game_name, { player: player_name });
+  }
+
+  function addObserver(game_name, player_name) {
+    ch_start(game_name, { observer: player_name });
   }
 
   function reset() {
     ch_push("reset", "");
   }
 
+  function lost() {}
+
   if (gameState.lost) {
     return <GameOver reset={reset} />;
   } else if (gameState.won) {
     return <GameWon reset={reset} />;
-  } else if (!gameState.startGame) {
-    return <Lobby gameState={gameState}/>;
+  } else if (gameState.lobby) {
+    return (
+      <Lobby
+        gameState={gameState}
+        addPlayer={addPlayer}
+        addObserver={addObserver}
+        setGameState={setGameState}
+      />
+    );
   } else {
     return (
       <ActiveGame
