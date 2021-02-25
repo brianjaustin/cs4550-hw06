@@ -152,6 +152,10 @@ function ActiveGame({ reset, gameState, setGameState }) {
     ch_push("guess", { number: currentGuess });
   }
 
+  function pass() {
+    ch_push("guess", {number:"----"});
+  }
+
   // Update functions based on code from lecture from 2021-01-29:
   // https://github.com/NatTuck/scratch-2021-01/blob/master/4550/0129/hangman/src/App.js
   function updateGuess(ev) {
@@ -213,6 +217,9 @@ function ActiveGame({ reset, gameState, setGameState }) {
       <div className="column">
         <button onClick={guess}>Guess</button>
       </div>
+      <div className="column">
+        <button onClick={pass}>Pass</button>
+      </div>
     </div>
   );
 
@@ -273,6 +280,7 @@ function Bulls() {
   const [gameState, setGameState] = useState({
     guesses: [],
     participants: [],
+    winners: [],
     lobby: true,
     error: "",
     player_name: "",
@@ -305,11 +313,27 @@ function Bulls() {
     ch_push("reset", "");
   }
 
-  function lost() {}
+  function lost() {
+    if (gameState.winners.includes(gameState.player_name)){
+      return false
+    } else if (gameState.winners.length > 0){
+      return true
+    } else {
+      return false
+    }
+  }
 
-  if (gameState.lost) {
+  function won(){
+    if(gameState.winners.includes(gameState.player_name)){
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  if (lost()) {
     return <GameOver reset={reset} />;
-  } else if (gameState.won) {
+  } else if (won()) {
     return <GameWon reset={reset} />;
   } else if (gameState.lobby) {
     return (

@@ -8,6 +8,7 @@ let channel = null;
 let gameState = {
   guesses: [],
   participants: [],
+  winners: [],
   lobby: true,
   won: false,
   lost: false,
