@@ -19,9 +19,7 @@ let callback = null;
 
 function state_update(st) {
   gameState = st;
-  console.log(st.participants)
   if (callback) {
-    console.log("Setting new state")
     callback(st);
   }
 }

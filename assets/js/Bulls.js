@@ -44,7 +44,6 @@ function Lobby({ gameState, addPlayer, addObserver, setGameState }) {
   }
 
   function setReady() {
-    console.log("Made ready");
     ch_push("ready", "");
   }
 
@@ -224,12 +223,7 @@ function ActiveGame({ reset, gameState, setGameState }) {
   );
 
   if (gameState.participants[gameState.player_name] != "player") {
-    console.log(gameState.player_name)
-    console.log(gameState.participants[gameState.player_name])
     input_guess = (<p>Only Ready Players can guess</p>)
-  } else{
-    console.log("NOT PLAYER")
-    console.log(gameState.participants[gameState.player_name]);
   }
 
 
