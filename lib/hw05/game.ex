@@ -45,7 +45,7 @@ defmodule Bulls.Game do
     participants: %{String.t() => :player | :observer},
     winners: [String.t()],
     lobby: boolean,
-    error: String.t()
+    errors: String.t()
   }
 
   @doc """
@@ -273,10 +273,9 @@ defmodule Bulls.Game do
 
   ## Parameters
     - st: game state
-    - participant: name of the participant who is viewing the state
   """
-  @spec view(game_state, String.t()) :: game_view
-  def view(st, participant) do
+  @spec view(game_state) :: game_view
+  def view(st) do
     guess_views = st.guesses
     |> Enum.map(&view_guesses(&1, st))
     |> Enum.into(%{})
@@ -285,7 +284,7 @@ defmodule Bulls.Game do
       lobby: st.round == 0,
       participants: st.participants,
       winners: get_winners(st),
-      error: Map.get(st.errors, participant, "")
+      errors: st.errors
     }
   end
 

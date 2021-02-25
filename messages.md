@@ -27,7 +27,7 @@ let channel = socket.channel("game:game_name", {observer: "observer_name"});
     "baz": "observer"
   },
   "lobby": false, // Represents whether or not new players may join
-  "error": "" // Error is specific to participant
+  "errors": {} // Errors for each participant
 }
 ```
 Note: when new players join, this state is pushed to all players.
