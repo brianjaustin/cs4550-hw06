@@ -34,6 +34,7 @@ defmodule Bulls.Game do
     secret: String.t(),
     guesses: %{String.t() => [String.t()]},
     errors: %{String.t() => String.t()},
+    previous_winners: [String.t()],
     sched: (non_neg_integer -> term)
   }
 
@@ -49,7 +50,8 @@ defmodule Bulls.Game do
     guesses: %{String.t() => guess_view},
     participants: %{String.t() => :observer | {:player, non_neg_integer, non_neg_integer}},
     lobby: boolean,
-    errors: String.t()
+    errors: String.t(),
+    previous_winners: [String.t()]
   }
 
   @doc """
@@ -68,6 +70,7 @@ defmodule Bulls.Game do
       secret: gen_secret(),
       guesses: %{},
       errors: %{},
+      previous_winners: [],
       sched: sched_callback,
     }
   end
@@ -320,6 +323,7 @@ defmodule Bulls.Game do
       secret: gen_secret(),
       guesses: guesses,
       participants: participants,
+      previous_winners: get_winners(st),
       errors: %{},
     }
   end
@@ -361,7 +365,8 @@ defmodule Bulls.Game do
       guesses: guess_views,
       lobby: st.round == 0,
       participants: participants,
-      errors: st.errors
+      errors: st.errors,
+      previous_winners: st.previous_winners
     }
   end
 

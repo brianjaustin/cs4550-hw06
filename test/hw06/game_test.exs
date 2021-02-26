@@ -255,6 +255,7 @@ defmodule Bulls.GameTest do
       "foo" => [:lobby_player, 1, 0],
       "bar" => [:lobby_player, 1, 0],
     }
+    assert result.previous_winners == ["foo", "bar"]
   end
 
   test "view sets bulls and cows" do
