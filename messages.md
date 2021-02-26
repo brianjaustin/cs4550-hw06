@@ -18,16 +18,16 @@ let channel = socket.channel("game:game_name", {observer: "observer_name"});
 ```json
 {
   "guesses": {
-    "foo": [{"guess": "1234", "a": 1, "b": 2}], // Sorted by round
+    "foo": [{"guess": "1234", "a": 1, "b": 2}],
     "bar": [{"guess": "5432", "a": 2, "b": 1}]
   },
   "participants": {
-    "foo": "player",
-    "bar": "player",
+    "foo": ["player", 0, 0],
+    "bar": ["player", 0, 0],
     "baz": "observer"
   },
-  "lobby": false, // Represents whether or not new players may join
-  "errors": {} // Errors for each participant
+  "lobby": false,
+  "errors": {}
 }
 ```
 Note: when new players join, this state is pushed to all players.
