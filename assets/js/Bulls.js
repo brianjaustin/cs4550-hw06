@@ -143,6 +143,13 @@ function Lobby({ gameState, addPlayer, addObserver, setGameState }) {
           )}
         </tbody>
       </table>
+      <h2>Previous Winner</h2>
+      <table>
+        <tbody>
+          {gameState.previous_winners.map((winner) =>
+          (<tr><td>{winner}</td></tr>))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -252,31 +259,11 @@ function ActiveGame({ reset, gameState, setGameState }) {
   );
 }
 
-function GameOver({ reset }) {
-  return (
-    <div>
-      <h1>Game Over!</h1>
-      <p>You failed to guess the secret number.</p>
-      <button onClick={reset}>Reset Game</button>
-    </div>
-  );
-}
-
-function GameWon({ reset }) {
-  return (
-    <div>
-      <h1>You won!</h1>
-      <p>You correctly guessed the secret number!</p>
-      <button onClick={reset}>Play Again</button>
-    </div>
-  );
-}
-
 function Bulls() {
   const [gameState, setGameState] = useState({
     guesses: [],
     participants: [],
-    winners: [],
+    previous_winners: [],
     lobby: true,
     error: "",
     player_name: "",
