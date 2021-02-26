@@ -158,8 +158,10 @@ defmodule Bulls.Game do
           guesses: Map.put(st.guesses, pname, [])
         }
 
-        if Enum.all?(result.participants, fn {_, type} -> type != :lobby_player end)
-        do
+        if Enum.all?(result.participants, fn
+          {_, {type, _, _}} -> type != :lobby_player
+          _ -> true
+        end) do
           st.sched.(1)
           %{result | round: 1}
         else
@@ -252,7 +254,7 @@ defmodule Bulls.Game do
     players = st.participants
     |> Enum.filter(fn
       {_, {role, _, _}} -> role == :player
-      _-> false
+      _ -> false
     end)
     |> Enum.count()
 
