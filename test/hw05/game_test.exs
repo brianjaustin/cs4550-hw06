@@ -18,7 +18,7 @@ defmodule Bulls.GameTest do
   test "add_player adds player when game is in setup" do
     result = Bulls.Game.new(&Function.identity/1)
     |> Bulls.Game.add_player({"foo", :player})
-    assert result.participants == %{"foo" => :pending_player}
+    assert result.participants == %{"foo" => {:lobby_player, 0, 0}}
   end
 
   test "add_player adds observer when game is in setup" do
@@ -120,18 +120,6 @@ defmodule Bulls.GameTest do
     assert Map.get(result.errors, "foo") == "Game not yet started."
   end
 
-  test "guess returns an error if game already concluded" do
-    result = Bulls.Game.new(&Function.identity/1)
-    result = %{result | secret: "1234"}
-    |> Bulls.Game.add_player({"foo", :player})
-    |> Bulls.Game.ready_player("foo")
-    |> Bulls.Game.guess("foo", "1234")
-    |> Bulls.Game.finish_round(1)
-    |> Bulls.Game.guess("foo", "5678")
-    assert Map.get(result.guesses, "foo") == [{"1234", 1}]
-    assert Map.get(result.errors, "foo") == "Game already concluded. Please start a new game."
-  end
-
   test "guess returns an error if participant is an observer" do
     result = Bulls.Game.new(&Function.identity/1)
     result = %{result | secret: "1234", round: 1}
@@ -199,6 +187,23 @@ defmodule Bulls.GameTest do
     assert Map.get(result.guesses, "foo") == nil
   end
 
+  test "finish_round concludes if someone won" do
+    result = Bulls.Game.new(&Function.identity/1)
+    result = %{result | secret: "1234"}
+    |> Bulls.Game.add_player({"foo", :player})
+    |> Bulls.Game.add_player({"bar", :player})
+    |> Bulls.Game.ready_player("foo")
+    |> Bulls.Game.ready_player("bar")
+    |> Bulls.Game.guess("foo", "1234")
+    |> Bulls.Game.finish_round(1)
+
+    assert result.round == 0
+    assert result.participants == %{
+      "foo" => {:lobby_player, 1, 0},
+      "bar" => {:lobby_player, 0, 1}
+    }
+  end
+
   test "conclude reset round, errors, and guesses" do
     result = Bulls.Game.new(&Function.identity/1)
     result = %{result | secret: "1111", round: 2}
@@ -211,13 +216,15 @@ defmodule Bulls.GameTest do
     assert result.guesses == %{"foo" => []}
   end
 
-  test "view sets lobby and winners for setup phase" do
+  test "view sets lobby for setup phase" do
     result = Bulls.Game.new(&Function.identity/1)
     |> Bulls.Game.add_player({"bar", :observer})
     |> Bulls.Game.view()
 
     assert result.lobby
-    assert result.winners == []
+    assert result.participants == %{
+      "bar" => :observer
+    }
   end
 
   test "view sets lobby and winners for play phase" do
@@ -227,7 +234,9 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.view()
 
     refute result.lobby
-    assert result.winners == []
+    assert result.participants == %{
+      "bar" => [:player, 0, 0]
+    }
   end
 
   test "view sets lobby and winners for result phase" do
@@ -241,8 +250,11 @@ defmodule Bulls.GameTest do
     |> Bulls.Game.guess("bar", "1234")
     |> Bulls.Game.view()
 
-    refute result.lobby
-    assert result.winners == ["foo", "bar"]
+    assert result.lobby
+    assert result.participants == %{
+      "foo" => [:lobby_player, 1, 0],
+      "bar" => [:lobby_player, 1, 0],
+    }
   end
 
   test "view sets bulls and cows" do
