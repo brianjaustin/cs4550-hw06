@@ -24,6 +24,20 @@ function state_update(st) {
   }
 }
 
+export function ch_reset(){
+  gameState = {
+    guesses: [],
+    participants: [],
+    winners: [],
+    lobby: true,
+    won: false,
+    lost: false,
+    error: "",
+  };
+
+  channel = null
+}
+
 export function ch_start(game_name, role) {
   channel = socket.channel(`game:${game_name}`, role);
   channel
