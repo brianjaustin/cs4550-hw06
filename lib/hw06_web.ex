@@ -30,7 +30,7 @@ defmodule BullsWeb do
   def view do
     quote do
       use Phoenix.View,
-        root: "lib/hw05_web/templates",
+        root: "lib/hw06_web/templates",
         namespace: BullsWeb
 
       # Import convenience functions from controllers

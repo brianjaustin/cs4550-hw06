@@ -6,7 +6,7 @@ export PORT=4792
 
 echo "Stopping old copy of app, if any..."
 
-_build/prod/rel/hw05/bin/hw05 stop || true
+_build/prod/rel/hw06/bin/hw06 stop || true
 
 CFGD=$(readlink -f ~/.config/bulls)
 
@@ -17,4 +17,4 @@ fi
 
 echo "Starting app..."
 
-_build/prod/rel/hw05/bin/hw05 start
+_build/prod/rel/hw06/bin/hw06 start

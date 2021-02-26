@@ -7,11 +7,11 @@
 # General application configuration
 use Mix.Config
 
-config :hw05,
+config :hw06,
   namespace: Bulls
 
 # Configures the endpoint
-config :hw05, BullsWeb.Endpoint,
+config :hw06, BullsWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "xIaszk8+A4G8/alsMRKN1oXpkz4BsWa6w2Tq5wWeLtuOfHTYPHYqYyxQ2gwKuFqa",
   render_errors: [view: BullsWeb.ErrorView, accepts: ~w(html json), layout: false],

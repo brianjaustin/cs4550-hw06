@@ -1,12 +1,12 @@
 defmodule BullsWeb.Endpoint do
-  use Phoenix.Endpoint, otp_app: :hw05
+  use Phoenix.Endpoint, otp_app: :hw06
 
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
   @session_options [
     store: :cookie,
-    key: "_hw05_key",
+    key: "_hw06_key",
     signing_salt: "uKixzBLX"
   ]
 
@@ -22,7 +22,7 @@ defmodule BullsWeb.Endpoint do
   # when deploying your static files in production.
   plug Plug.Static,
     at: "/",
-    from: :hw05,
+    from: :hw06,
     gzip: false,
     only: ~w(css fonts images js favicon.ico robots.txt)
 
