@@ -223,7 +223,7 @@ defmodule Bulls.GameTest do
 
     assert result.lobby
     assert result.participants == %{
-      "bar" => :observer
+      "bar" => [:observer, 0, 0]
     }
   end
 

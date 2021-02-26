@@ -367,8 +367,8 @@ defmodule Bulls.Game do
     {name, Tuple.to_list(metadata)}
   end
 
-  defp view_participant(participant) do
-    participant
+  defp view_participant({pname, ptype}) do
+    {pname, [ptype, 0, 0]}
   end
 
   defp view_guesses({player, guesses}, st) do
