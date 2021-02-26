@@ -25,7 +25,12 @@ defmodule Bulls.Game do
   @typedoc "Represents internal game state"
   @type game_state :: %{
     round: non_neg_integer | :result,
-    participants: %{String.t() => :pending_player | :player | :observer},
+    participants: %{
+      String.t() =>
+      :observer
+      | {:lobby_player, non_neg_integer, non_neg_integer}
+      | {:player, non_neg_integer, non_neg_integer}
+    },
     secret: String.t(),
     guesses: %{String.t() => [String.t()]},
     errors: %{String.t() => String.t()},
@@ -42,8 +47,7 @@ defmodule Bulls.Game do
   @typedoc "Represents the state as viewable by participants"
   @type game_view :: %{
     guesses: %{String.t() => guess_view},
-    participants: %{String.t() => :player | :observer},
-    winners: [String.t()],
+    participants: %{String.t() => :observer | {:player, non_neg_integer, non_neg_integer}},
     lobby: boolean,
     errors: String.t()
   }
@@ -92,10 +96,10 @@ defmodule Bulls.Game do
   ## Examples
 
     iex> Bulls.Game.add_player(%{round: 0, participants: %{}}, {"foo", :player})
-    %{participants: %{"foo" => :pending_player}, round: 0}
+    %{participants: %{"foo" => {:lobby_player, 0, 0}}, round: 0}
 
-    iex> Bulls.Game.add_player(%{round: 0, participants: %{"foo" => :player}}, {"bar", :observer})
-    %{participants: %{"foo" => :player, "bar" => :observer}, round: 0}
+    iex> Bulls.Game.add_player(%{round: 0, participants: %{"foo" => {:player, 1, 2}}}, {"bar", :observer})
+    %{participants: %{"foo" => {:player, 1, 2}, "bar" => :observer}, round: 0}
 
     iex> Bulls.Game.add_player(%{round: 1, participants: %{}}, {"foo", :player})
     %{participants: %{"foo" => :observer}, round: 1}
@@ -108,7 +112,9 @@ defmodule Bulls.Game do
       st.round > 0 ->
         %{st | participants: Map.put(st.participants, pname, :observer)}
       true ->
-        %{st | participants: Map.put(st.participants, pname, :pending_player)}
+        %{
+          st | participants: Map.put(st.participants, pname, {:lobby_player, 0, 0})
+        }
     end
   end
 
@@ -133,33 +139,34 @@ defmodule Bulls.Game do
 
   ## Examples
 
-    iex> Bulls.Game.ready_player(%{participants: %{"baz" => :player}, guesses: %{}, round: 0, sched: &Function.identity/1}, "foo")
-    %{participants: %{"baz" => :player}, guesses: %{}, round: 0, sched: &Function.identity/1}
+    iex> Bulls.Game.ready_player(%{participants: %{"baz" => {:player, 0, 0}}, guesses: %{}, round: 0, sched: &Function.identity/1}, "foo")
+    %{participants: %{"baz" => {:player, 0, 0}}, guesses: %{}, round: 0, sched: &Function.identity/1}
 
-    iex> Bulls.Game.ready_player(%{participants: %{"foo" => :pending_player}, guesses: %{}, round: 0, sched: &Function.identity/1}, "foo")
-    %{participants: %{"foo" => :player}, guesses: %{"foo" => []}, round: 1, sched: &Function.identity/1}
+    iex> Bulls.Game.ready_player(%{participants: %{"foo" => {:lobby_player, 1, 2}}, guesses: %{}, round: 0, sched: &Function.identity/1}, "foo")
+    %{participants: %{"foo" => {:player, 1, 2}}, guesses: %{"foo" => []}, round: 1, sched: &Function.identity/1}
 
     iex> Bulls.Game.ready_player(%{participants: %{"bar" => :observer}, guesses: %{}, round: 0, sched: &Function.identity/1}, "bar")
     %{participants: %{"bar" => :observer}, guesses: %{}, round: 0, sched: &Function.identity/1}
   """
   @spec ready_player(game_state, String.t()) :: game_state
   def ready_player(st, pname) do
-    if Map.get(st.participants, pname) == :pending_player do
-      result = %{
-        st |
-        participants: Map.put(st.participants, pname, :player),
-        guesses: Map.put(st.guesses, pname, [])
-      }
+    case Map.get(st.participants, pname) do
+      {:lobby_player, ws, ls} ->
+        result = %{
+          st |
+          participants: Map.put(st.participants, pname, {:player, ws, ls}),
+          guesses: Map.put(st.guesses, pname, [])
+        }
 
-      if Enum.all?(result.participants, fn {_, type} -> type != :pending_player end)
-      do
-        st.sched.(1)
-        %{result | round: 1}
-      else
-        result
-      end
-    else
-      st
+        if Enum.all?(result.participants, fn {_, type} -> type != :lobby_player end)
+        do
+          st.sched.(1)
+          %{result | round: 1}
+        else
+          result
+        end
+
+      _ -> st
     end
   end
 
@@ -179,9 +186,7 @@ defmodule Bulls.Game do
     cond do
       st.round == 0 ->
         %{st | errors: Map.put(st.errors, player, "Game not yet started.")}
-      st.round == :result ->
-        %{st | errors: Map.put(st.errors, player, "Game already concluded. Please start a new game.")}
-      Map.get(st.participants, player, :observer) != :player ->
+      active?(Map.get(st.participants, player, :observer)) ->
         %{st | errors: Map.put(st.errors, player, "Only ready players may place guesses.")}
       num == "----" ->
         do_pass(%{st | errors: Map.put(st.errors, player, "")}, player)
@@ -195,6 +200,11 @@ defmodule Bulls.Game do
         )}
     end
   end
+
+  defp active?(:observer), do: true
+  defp active?({:lobby_player, _, _}), do: true
+  defp active?({:player, _, _}), do: false
+
 
   defp do_guess(st, player, num) do
     player_guesses = Map.get(st.guesses, player, [])
@@ -240,7 +250,10 @@ defmodule Bulls.Game do
     |> Enum.count()
 
     players = st.participants
-    |> Enum.filter(fn {_, role} -> role == :player end)
+    |> Enum.filter(fn
+      {_, {role, _, _}} -> role == :player
+      _-> false
+    end)
     |> Enum.count()
 
     guesses_this_round == players
@@ -269,7 +282,7 @@ defmodule Bulls.Game do
         st.sched.(new_round)
         %{st | guesses: guesses, round: new_round}
       true ->
-        %{st | round: :result}
+        conclude(st)
     end
   end
 
@@ -280,6 +293,48 @@ defmodule Bulls.Game do
       guesses
     end
   end
+
+  @doc """
+  Concludes the current game by generating a new secret and putting
+  players in the lobby.
+
+  ## Arguments
+
+    - st: game to conclude
+  """
+  @spec conclude(game_state) :: game_state
+  def conclude(st) do
+    guesses = st.participants
+    |> Enum.map(fn {p, _} -> {p, []} end)
+    |> Enum.into(%{})
+
+    participants = st.participants
+    |> Enum.map(&conclude_player(st, &1))
+    |> Enum.into(%{})
+
+    %{
+      st |
+      round: 0,
+      secret: gen_secret(),
+      guesses: guesses,
+      participants: participants,
+      errors: %{},
+    }
+  end
+
+  defp conclude_player(st, {player, {:player, ws, ls}}) do
+    winners = get_winners(st)
+    cond do
+      Enum.count(winners) < 1 ->
+        {player, {:lobby_player, ws, ls}}
+      player in winners ->
+        {player, {:lobby_player, ws + 1, ls}}
+      true ->
+        {player, {:lobby_player, ws, ls + 1}}
+    end
+  end
+
+  defp conclude_player(_, participant), do: participant
 
   @doc """
   Transforms a game state into something viewable by clients (ie
@@ -293,13 +348,27 @@ defmodule Bulls.Game do
     guess_views = st.guesses
     |> Enum.map(&view_guesses(&1, st))
     |> Enum.into(%{})
+
+    # Channels don't serialize tuples properly, so make them into lists
+    # here (if applicable).
+    participants = st.participants
+    |> Enum.map(&view_participant/1)
+    |> Enum.into(%{})
+
     %{
       guesses: guess_views,
       lobby: st.round == 0,
-      participants: st.participants,
-      winners: get_winners(st),
+      participants: participants,
       errors: st.errors
     }
+  end
+
+  defp view_participant({name, {_, _, _} = metadata}) do
+    {name, Tuple.to_list(metadata)}
+  end
+
+  defp view_participant(participant) do
+    participant
   end
 
   defp view_guesses({player, guesses}, st) do
