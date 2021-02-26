@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { ch_join, ch_push, ch_reset, ch_start } from "./socket";
+import { ch_join, ch_push, ch_start } from "./socket";
 import _ from "lodash";
 
 function ErrorMessage({ msg }) {
@@ -282,9 +282,6 @@ function Bulls() {
     player_name: "",
   });
 
-  let wins = 0
-  let losses = 0
-
   function setGameStateWOName(st){
     let new_state = Object.assign(st, {player_name: gameState.player_name})
     setGameState(new_state)
@@ -310,18 +307,6 @@ function Bulls() {
 
   function reset() {
     ch_push("reset", "");
-  }
-
-  function lost() {
-    if (gameState.participants[gameState.player_name] === undefined){
-      return false;
-    }
-    if (gameState.participants[gameState.player_name][2] > losses){
-      losses += 1;
-      return true;
-    } else {
-      return false;
-    }
   }
 
   if (gameState.lobby) {
