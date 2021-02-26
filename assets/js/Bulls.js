@@ -32,13 +32,15 @@ function LobbyReady({ setReady }) {
 }
 
 function Lobby({ gameState, addPlayer, addObserver, setGameState }) {
-  const [currentName, setCurrentName] = useState({ game: "", name: "" });
+  const [currentName, setCurrentName] = useState({ game: "", name: gameState.player_name });
 
-  function displayPlayer(name, status) {
+  function displayPlayer(name, status, wins, losses) {
     return (
       <tr key={name}>
         <td>{name}</td>
         <td>{status}</td>
+        <td>{wins}</td>
+        <td>{losses}</td>
       </tr>
     );
   }
@@ -113,7 +115,7 @@ function Lobby({ gameState, addPlayer, addObserver, setGameState }) {
   );
 
   if (currentName.name in gameState.participants) {
-    if (gameState.participants[currentName.name] == "pending_player") {
+    if (gameState.participants[currentName.name][0] == "lobby_player") {
       header = <LobbyReady setReady={setReady} />;
     } else {
       header = <h2>Waiting for other players to join!</h2>;
@@ -131,15 +133,16 @@ function Lobby({ gameState, addPlayer, addObserver, setGameState }) {
           <tr>
             <th>Name</th>
             <th>Status</th>
+            <th>Wins</th>
+            <th>Losses</th>
           </tr>
         </thead>
         <tbody>
           {Object.entries(gameState.participants).map((player) =>
-            displayPlayer(player[0], player[1])
+            displayPlayer(player[0], player[1][0], player[1][1], player[1][2])
           )}
         </tbody>
       </table>
-      <p>{JSON.stringify(gameState)}</p>
     </div>
   );
 }
@@ -222,7 +225,7 @@ function ActiveGame({ reset, gameState, setGameState }) {
     </div>
   );
 
-  if (gameState.participants[gameState.player_name] != "player") {
+  if (gameState.participants[gameState.player_name][0] != "player") {
     input_guess = (<p>Only Ready Players can guess</p>)
   }
 
@@ -245,7 +248,6 @@ function ActiveGame({ reset, gameState, setGameState }) {
         </button>
       </div>
       {guesses}
-      <p>{JSON.stringify(gameState)}</p>
     </div>
   );
 }
@@ -307,29 +309,7 @@ function Bulls() {
     ch_push("reset", "");
   }
 
-  function lost() {
-    if (gameState.winners.includes(gameState.player_name)){
-      return false
-    } else if (gameState.winners.length > 0){
-      return true
-    } else {
-      return false
-    }
-  }
-
-  function won(){
-    if(gameState.winners.includes(gameState.player_name)){
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  if (lost()) {
-    return <GameOver reset={reset} />;
-  } else if (won()) {
-    return <GameWon reset={reset} />;
-  } else if (gameState.lobby) {
+  if (gameState.lobby) {
     return (
       <Lobby
         gameState={gameState}
